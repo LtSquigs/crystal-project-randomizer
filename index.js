@@ -291,14 +291,14 @@ class ExecutableEditor {
 const localGameDir = 'crystal-project';
 const contentPath = path.join(localGameDir, 'Content');
 
-const dbReader = new DatabaseReader(contentPath);
-const entityEditor = new EntityEditor(contentPath);
-const exeEditor = new ExecutableEditor(localGameDir);
-
 if (fs.existsSync(localGameDir)) {
     fs.rmSync(localGameDir, {recursive: true});
 }
 fs.cpSync(GAME_PATH, localGameDir, {recursive: true});
+
+const dbReader = new DatabaseReader(contentPath);
+const entityEditor = new EntityEditor(contentPath);
+const exeEditor = new ExecutableEditor(localGameDir);
 
 dbReader.readFiles(contentPath);
 entityEditor.loadEntities(contentPath);
