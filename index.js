@@ -243,7 +243,7 @@ class EntityEditor {
             }
         }
 
-        this.moveEntity(crytalsToMove[0].from, { X: 2, Y: 99, Z: 7 }, crytalsToMove[0].entity);
+        this.moveEntity(crytalsToMove[0].from, { X: -4, Y: 120, Z: -22 }, crytalsToMove[0].entity);
     }
 
     // to here should by simple x,y,z global coords
