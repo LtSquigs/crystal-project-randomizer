@@ -226,7 +226,7 @@ class EntityEditor {
 
         this.worldZip.getEntry(this.file + '.dat').setData(fullDatFile);
         const finalDat = Buffer.concat([this.fileHeader, this.worldZip.toBuffer()]);
-        fs.writeFileSync(path.join(this.contentPath, "Worlds", this.file + "a.dat"), finalDat);
+        fs.writeFileSync(path.join(this.contentPath, "Worlds", this.file + ".dat"), finalDat);
     }
 }
 
@@ -234,10 +234,10 @@ class ExecutableEditor {
     constructor(gamePath) {
         this.gamePath = gamePath;
         this.exeData = fs.readFileSync(path.join(gamePath, 'Crystal Project.exe'))
-        this.saveDirString =    "Save/";
-        this.newSaveDirString = "Rand/";
-        this.saveDirBuf = Buffer.from(this.saveDirString, 'utf16le');
-        this.newSaveDirBuf = Buffer.from(this.newSaveDirString, 'utf16le');
+        this.saveDirBuf = Buffer.from("Save/", 'utf16le');
+        this.newSaveDirBuf = Buffer.from("Rand/", 'utf16le');
+        this.deleteDirBuf = Buffer.from("Deleted/", 'utf16le');
+        this.newDeleteDirBuf = Buffer.from("Deyeted/", 'utf16le');
     }
 
     changeSaveDirectory() {
@@ -249,6 +249,20 @@ class ExecutableEditor {
             bufferParts.push(this.newSaveDirBuf);
             lastLastIdx = lastIdx + this.newSaveDirBuf.length;
             lastIdx = this.exeData.indexOf(this.saveDirBuf, lastIdx+1)
+        }
+        bufferParts.push(this.exeData.slice(lastLastIdx));
+        this.exeData = Buffer.concat(bufferParts);
+    }
+
+    changeDeleteDirectory() {
+        let lastLastIdx = 0;
+        let lastIdx = this.exeData.indexOf(this.deleteDirBuf, 0);
+        let bufferParts = [];
+        while(lastIdx !== -1) {
+            bufferParts.push(this.exeData.slice(lastLastIdx, lastIdx));
+            bufferParts.push(this.newDeleteDirBuf);
+            lastLastIdx = lastIdx + this.newDeleteDirBuf.length;
+            lastIdx = this.exeData.indexOf(this.deleteDirBuf, lastIdx+1)
         }
         bufferParts.push(this.exeData.slice(lastLastIdx));
         this.exeData = Buffer.concat(bufferParts);
@@ -290,5 +304,6 @@ dbReader.readFiles(contentPath);
 entityEditor.loadEntities(contentPath);
 entityEditor.saveEntities(contentPath);
 exeEditor.changeSaveDirectory();
+exeEditor.changeDeleteDirectory();
 exeEditor.saveExe();
 
