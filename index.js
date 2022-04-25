@@ -5,7 +5,8 @@ const AdmZip = require("adm-zip");
 const GAME_PATH = "";
 
 class DatabaseReader {
-    constructor() {
+    constructor(contentPath) {
+        this.contentPath = contentPath;
         this.files = [
             'ability', 'actor', 'animation', 'biome', 'difficulty', 
             'equipment', 'gender', 'item', 'job', 'monster', 'passive', 
@@ -15,9 +16,9 @@ class DatabaseReader {
         this.databases = {};
     }
 
-    readFiles(contentPath) {
+    readFiles() {
         for(const file of this.files) {
-            const data = fs.readFileSync(path.join(contentPath, 'Database', file + '.dat'));
+            const data = fs.readFileSync(path.join(this.contentPath, 'Database', file + '.dat'));
             const header = data.slice(0, 2);
             const arr = new Uint8Array(data.slice(2));
             const end = arr.length;
@@ -40,8 +41,9 @@ class DatabaseReader {
 }
 
 class EntityEditor {
-    constructor() {
+    constructor(contentPath) {
         // All we actually care about is the field entities
+        this.contentPath = contentPath;
         this.file = 'field';
         this.worldZip = null;
         this.fileHeader = null;
@@ -78,8 +80,8 @@ class EntityEditor {
         }
     }
 
-    loadEntities(contentPath) {
-        const worldFile = fs.readFileSync(path.join(contentPath, "Worlds", this.file + ".dat"));
+    loadEntities() {
+        const worldFile = fs.readFileSync(path.join(this.contentPath, "Worlds", this.file + ".dat"));
 
         // The world file is actually just a Zip File, but with a small header of 2 bytes in front
         // used for versioning.
@@ -90,10 +92,6 @@ class EntityEditor {
         // this dat file contains the entity information we are after (as well as other things)
         const entityDat = this.worldZip.getEntry(this.file + '.dat').getData();
         const entityArr = new Uint8Array(entityDat);
-
-        console.log(entityDat.length)
-      //  console.log(this.worldZip.toBuffer().length);
-      //  console.log(entityDat.length);
 
         // Finally, the structure of this entity dat is a collection of segments of various metadata
         // with zip files containing voxel data and entity json files.
@@ -161,14 +159,12 @@ class EntityEditor {
             }
 
             const zip = this.zipDataCache[zipKey].data;
-            //console.log(zipKey);
-            //console.log(entry);
             const entityJson = JSON.parse(zip.getEntry(entry).getData().toString());
             this.entityFiles[zipKey + ',' + fileCoords.y] = entityJson;
         }
     }
 
-    saveEntities(contentPath) {
+    saveEntities() {
         // To save back this data we need to reconstruct the file
         // Everything up until the entity ledger should be the same
         // Potentially the ledger as well if we havent changed the location of anything
@@ -228,28 +224,62 @@ class EntityEditor {
             this.endingBytes
         ]);
 
-        console.log([
-            this.beforeBytes,
-            fullMetadataHeader.readUInt32LE(),
-            fullMetadataBuffer.length,
-            this.mysteriousBytes,
-            fullZipHeader.readUInt32LE(),
-            fullZipBuffer.length,
-            this.endingBytes
-        ])
-        console.log(fullDatFile.length)
-
         this.worldZip.getEntry(this.file + '.dat').setData(fullDatFile);
         const finalDat = Buffer.concat([this.fileHeader, this.worldZip.toBuffer()]);
-        fs.writeFileSync(path.join(contentPath, "Worlds", this.file + "a.dat"), finalDat);
+        fs.writeFileSync(path.join(this.contentPath, "Worlds", this.file + "a.dat"), finalDat);
     }
 }
 
-const dbReader = new DatabaseReader();
-const entityEditor = new EntityEditor();
+class ExecutableEditor {
+    constructor(gamePath) {
+        this.gamePath = gamePath;
+        this.exeData = fs.readFileSync(path.join(gamePath, 'Crystal Project.exe'))
+        this.saveDirString =    "Save/";
+        this.newSaveDirString = "Rand/";
+        this.saveDirBuf = Buffer.from(this.saveDirString, 'utf16le');
+        this.newSaveDirBuf = Buffer.from(this.newSaveDirString, 'utf16le');
+    }
+
+    changeSaveDirectory() {
+        let lastLastIdx = 0;
+        let lastIdx = this.exeData.indexOf(this.saveDirBuf, 0);
+        let bufferParts = [];
+        while(lastIdx !== -1) {
+            bufferParts.push(this.exeData.slice(lastLastIdx, lastIdx));
+            bufferParts.push(this.newSaveDirBuf);
+            lastLastIdx = lastIdx + this.newSaveDirBuf.length;
+            lastIdx = this.exeData.indexOf(this.saveDirBuf, lastIdx+1)
+        }
+        bufferParts.push(this.exeData.slice(lastLastIdx));
+        this.exeData = Buffer.concat(bufferParts);
+    }
+
+    saveExe() {
+        fs.writeFileSync(path.join(this.gamePath, 'Crystal Project.exe'), this.exeData);
+    }
+}
+
+// TODO Write EXE Editor, load EXE, search for strings, and fix
+
+// 00 00 00 00 02 00 00 00 05 00 00 00 04 00 00 00 03 00 00 00 0E 00 00 00
+// This is the default job setup
+
+// 00 00 00 00 05 00 00 00 04 00 00 00 03 00 00 00
+// This is the starting selected jobs
+
+// Can check for SAVE_DIR string "Save/" and "Deleted/" to change, or prefixes
+// Also maybe can search for Saved Games/
+// Saved Games = 53 00 61 76 00 65 00 64 00 20 00 47 00 61 00 6D 00 65 00 73 00 2F 00
+// Save/ = 53 00 61 00 76 00 65 00 2F 00
+// Deleted/ = 44 00 65 00 6C 00 65 00 74 00 65 00 64 00 2F 00  
+
 
 const localGameDir = 'crystal-project';
 const contentPath = path.join(localGameDir, 'Content');
+
+const dbReader = new DatabaseReader(contentPath);
+const entityEditor = new EntityEditor(contentPath);
+const exeEditor = new ExecutableEditor(localGameDir);
 
 if (fs.existsSync(localGameDir)) {
     fs.rmSync(localGameDir, {recursive: true});
@@ -259,4 +289,6 @@ fs.cpSync(GAME_PATH, localGameDir, {recursive: true});
 dbReader.readFiles(contentPath);
 entityEditor.loadEntities(contentPath);
 entityEditor.saveEntities(contentPath);
+exeEditor.changeSaveDirectory();
+exeEditor.saveExe();
 
