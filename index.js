@@ -81,6 +81,17 @@ class DatabaseReader {
     }
 }
 
+const voxelCoordFromGlobal = (coord) => {
+    const voxelSize = 16;
+    // Voxel Coords are in chunks of 16 size
+    // e.g. Voxel 0 = 0 to 15, Voxel 1 = 16 to 31
+    // Voxel -1 = -16 to -1
+    
+    // Luckily Math.floor will do this for us automatically, even
+    // for negative numbers
+    return Math.floor(coord/16);
+}
+
 class EntityEditor {
     constructor(contentPath) {
         this.contentPath = contentPath;
@@ -99,7 +110,7 @@ class EntityEditor {
         const parts = line.split(':');
         const id = parts[0];
         const coords = parts[1].split(',');
-        const globalCoords = parts[2].split(',');
+        const voxelCoords = parts[2].split(',');
 
         return {
             id: id,
@@ -108,12 +119,26 @@ class EntityEditor {
                 y: coords[1],
                 z: coords[2]
             },
-            globalCoords: {
-                x: globalCoords[0],
-                y: globalCoords[1],
-                z: globalCoords[2]
+            voxelCoords: {
+                x: voxelCoords[0],
+                y: voxelCoords[1],
+                z: voxelCoords[2]
             }
         }
+    }
+
+    createEntityLedger(entity) {
+        const id = entity.ID;
+        const coords = entity.Coord;
+        const x = coords.X;
+        const y = coords.Y;
+        const z = coords.Z;
+        const voxelX = voxelCoordFromGlobal(x);
+        const voxelY = voxelCoordFromGlobal(y);
+        const voxelZ = voxelCoordFromGlobal(z);
+
+
+        return `${id}:${x},${y},${z}:${voxelX},${voxelY},${voxelZ}`;
     }
 
     swapJobs(jobIds) {
@@ -202,6 +227,56 @@ class EntityEditor {
         }
     }
 
+    // to here should by simple x,y,z global coords
+    // from here should be the entity file key (e.g. x,y,z of file)
+    moveEntity(from, to, entity) {
+        // In order to move an entity, we need to change its internal X/Y/Z coords
+        // and also which entityFile the entitiy is in.
+        // If those are changed, the rest will automatically be handled by the save system.
+        // NOTE: Its also important to not use this function within a loop iterating over entities
+        // or entity files, as it will change those fields.
+        entity.Coord.X = to.X;
+        entity.Coord.Y = to.Y;
+        entity.Coord.Z = to.Z;
+
+        const voxelX = voxelCoordFromGlobal(to.X);
+        const voxelY = voxelCoordFromGlobal(to.Y);
+        const voxelZ = voxelCoordFromGlobal(to.Z);
+        const newEntityFile = `${voxelX},${voxelY},${voxelZ}`;
+
+        if (!this.entityFiles[newEntityFile]) {
+            const zipKey = `${voxelX},${voxelZ}`;
+            // If there is not an existing entity file, we need to make the array for it
+            // as well as create the entry in the corresponding zip file
+            this.entityFiles[newEntityFile] = [];
+            const zipMeta = this.zipDataCache[zipKey];
+            
+            if (!zipMeta) {
+                // There is no existing zip file, we have to make one, which is annoying
+                // I dont think this use case can ever actually happen though because
+                // where would we be placing an entity with no existing voxels?
+                // For now just log a warning and ignore it
+                console.error("No existing voxel zip to place entity in");
+                return;
+            }
+
+            const zip = zipMeta.data;
+            // Just as an extra precaution we make sure the entry is not there
+            // already
+            if (!zip.getEntry(`y${voxelY}e.json`)) {
+                zip.addFile(`y${voxelY}e.json`, Buffer.from(JSON.stringify([])));
+            }
+        }
+
+        const newEntityJson = this.entityFiles[newEntityFile];
+        const oldEntityJson = this.entityFiles[from];
+
+        // Finally we remove out entity from the old entity JSON file
+        // and add it to the new entity JSON file
+        this.entityFiles[from] = oldEntityJson.filter((oldEntity) => entity.ID !== oldEntity.ID);
+        this.entityFiles[newEntityFile] = newEntityJson.push(entity);
+    }
+
     loadEntities() {
         console.log('Loading entities');
         const worldFile = fs.readFileSync(path.join(this.contentPath, "Worlds", this.file + ".dat"));
@@ -251,7 +326,7 @@ class EntityEditor {
 
         // We store some segments of the DAT files that we will never change
         // to reconstruct it later.
-        this.beforeBytes = entityDat.slice(0, 4 + headerLength + 4 + ledgerLength);
+        this.beforeBytes = entityDat.slice(0, 4 + headerLength);
         this.mysteriousBytes = entityDat.slice(zipRegionOffset - 4, zipRegionOffset);
         this.endingBytes = entityDat.slice(zipRegionOffset + 4 + zipRegionSize);
 
@@ -275,36 +350,47 @@ class EntityEditor {
         // contains a JSON list of all the entities at the y coordinate.
         this.entityFiles = {};
         for(let entity of this.entityLedger) {
-            const globalCoords = entity.globalCoords;
-            const zipKey = globalCoords.x + ',' + globalCoords.z;
-            const entry = 'y' + globalCoords.y + 'e.json';
+            const voxelCoords = entity.voxelCoords;
+            const zipKey = voxelCoords.x + ',' + voxelCoords.z;
+            const entry = 'y' + voxelCoords.y + 'e.json';
 
-            if (!!this.entityFiles[zipKey + ',' + globalCoords.y]) {
+            if (!!this.entityFiles[zipKey + ',' + voxelCoords.y]) {
                 continue;
             }
 
             const zip = this.zipDataCache[zipKey].data;
             const entityJson = JSON.parse(zip.getEntry(entry).getData().toString());
-            this.entityFiles[zipKey + ',' + globalCoords.y] = entityJson;
+            this.entityFiles[zipKey + ',' + voxelCoords.y] = entityJson;
         }
     }
 
     saveEntities() {
         // To save back this data we need to reconstruct the file
-        // Everything up until the entity ledger should be the same
-        // Potentially the ledger as well if we havent changed the location of anything
 
         // For every file in entityFiles, turn the new JSON into a buffer
         // find the zip in the zipDataCache and overwrite the JSON file entry
+        // We also store ledger information about the entities in the file
+        const ledger = [];
         for(let key in this.entityFiles) {
             const parts = key.split(',');
             const zipKey = parts[0] + ',' + parts[1];
             const entryFile = 'y' + parts[2] + 'e.json';
 
             const zip = this.zipDataCache[zipKey].data;
+            const entities = this.entityFiles[key];
+
+            for(let entity of entities) {
+                ledger.push(this.createEntityLedger(entity));
+            }
             
-            zip.getEntry(entryFile).setData(JSON.stringify(this.entityFiles[key]));
+            zip.getEntry(entryFile).setData(JSON.stringify(entities));
         }
+
+        // UNSURE if this is UTF 8 or UTF 16
+        // have to add the final newline in
+        const ledgerBuff = Buffer.from(ledger.join(';\r\n') + ';\r\n');
+        const leaderHeader = Buffer.alloc(4);
+        leaderHeader.writeInt32LE(ledgerBuff.length);
 
         // For every zip in the zipDataCache, generate a buffer, get the size of each one
         // and concatenate all of them together, get the full region size
@@ -340,6 +426,8 @@ class EntityEditor {
 
         const fullDatFile = Buffer.concat([
             this.beforeBytes,
+            leaderHeader,
+            ledgerBuff,
             fullMetadataHeader,
             fullMetadataBuffer,
             this.mysteriousBytes,
