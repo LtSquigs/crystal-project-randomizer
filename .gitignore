@@ -1,0 +1,6 @@
+lol.js
+*.dat
+database
+crystal-project
+node_modules
+.DS_Store
