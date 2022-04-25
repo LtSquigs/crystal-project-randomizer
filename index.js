@@ -227,6 +227,25 @@ class EntityEditor {
         }
     }
 
+    moveCrystals() {
+        console.log('Moving Crystals');
+        const crytalsToMove = [];
+        // First we grab all the treasures in the entities
+        // For now we will be super naive, swapping everything, even unique ones
+        // even bosses, even giants, even ones that set flags, and the entire
+        // troop page
+        for(let key in this.entityFiles) {
+            const entityFile = this.entityFiles[key];
+            for(let entity of entityFile) {
+                if(entity.CrystalData && entity.ID == 130) {
+                    crytalsToMove.push({ from: key, entity: entity });
+                }
+            }
+        }
+
+        this.moveEntity(crytalsToMove[0].from, { X: 2, Y: 99, Z: 7 }, crytalsToMove[0].entity);
+    }
+
     // to here should by simple x,y,z global coords
     // from here should be the entity file key (e.g. x,y,z of file)
     moveEntity(from, to, entity) {
@@ -242,7 +261,7 @@ class EntityEditor {
         const voxelX = voxelCoordFromGlobal(to.X);
         const voxelY = voxelCoordFromGlobal(to.Y);
         const voxelZ = voxelCoordFromGlobal(to.Z);
-        const newEntityFile = `${voxelX},${voxelY},${voxelZ}`;
+        const newEntityFile = `${voxelX},${voxelZ},${voxelY}`;
 
         if (!this.entityFiles[newEntityFile]) {
             const zipKey = `${voxelX},${voxelZ}`;
@@ -274,7 +293,8 @@ class EntityEditor {
         // Finally we remove out entity from the old entity JSON file
         // and add it to the new entity JSON file
         this.entityFiles[from] = oldEntityJson.filter((oldEntity) => entity.ID !== oldEntity.ID);
-        this.entityFiles[newEntityFile] = newEntityJson.push(entity);
+        newEntityJson.push(entity)
+        this.entityFiles[newEntityFile] = newEntityJson;
     }
 
     loadEntities() {
@@ -555,6 +575,7 @@ entityEditor.loadEntities();
 entityEditor.swapJobs(randomizedJobs.slice(6));
 entityEditor.shuffleTreasure();
 entityEditor.shuffleMonsters();
+entityEditor.moveCrystals();
 entityEditor.saveEntities();
 
 exeEditor.loadExe();
