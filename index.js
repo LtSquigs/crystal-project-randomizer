@@ -4,6 +4,24 @@ const AdmZip = require("adm-zip");
 
 const GAME_PATH = "";
 
+function shuffle(array) {
+    let currentIndex = array.length,  randomIndex;
+
+    // While there remain elements to shuffle.
+    while (currentIndex != 0) {
+
+        // Pick a remaining element.
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+
+        // And swap it with the current element.
+        [array[currentIndex], array[randomIndex]] = [
+        array[randomIndex], array[currentIndex]];
+    }
+
+    return array;
+}
+
 class DatabaseReader {
     constructor(contentPath) {
         this.contentPath = contentPath;
@@ -17,6 +35,7 @@ class DatabaseReader {
     }
 
     readFiles() {
+        console.log('Reading database files');
         for(const file of this.files) {
             const data = fs.readFileSync(path.join(this.contentPath, 'Database', file + '.dat'));
             const header = data.slice(0, 2);
@@ -38,11 +57,32 @@ class DatabaseReader {
             } 
         }
     }
+
+    writeFiles() {
+        for(let file in this.databases) {
+            const data = this.databases[file];
+            const arr = new Uint8Array(Buffer.from(JSON.stringify(data.json)));
+            const end = arr.length;
+
+            let i = 0;
+            while(i < end) {
+                arr[i] = 255 - arr[i];
+                i++;
+            }
+
+            const datFile = Buffer.concat([data.header, Buffer.from(arr)]);
+            fs.writeFileSync(path.join(this.contentPath, 'Database', file + '.dat'), datFile)
+        }
+    }
+
+    getJobIds() {
+        const jobs = this.databases.job.json;
+        return jobs.map((job) => job.ID)
+    }
 }
 
 class EntityEditor {
     constructor(contentPath) {
-        // All we actually care about is the field entities
         this.contentPath = contentPath;
         this.file = 'field';
         this.worldZip = null;
@@ -60,11 +100,7 @@ class EntityEditor {
         const id = parts[0];
         const coords = parts[1].split(',');
         const globalCoords = parts[2].split(',');
-    
-        // coords are x, y, z
-        // global coords are x, y, z
-        // where x and z lineup to the file coords parsed from the other region
-        // and y is the filename (e.g. y<n>e.json = entity json file)
+
         return {
             id: id,
             coords: {
@@ -72,7 +108,7 @@ class EntityEditor {
                 y: coords[1],
                 z: coords[2]
             },
-            fileCoords: {
+            globalCoords: {
                 x: globalCoords[0],
                 y: globalCoords[1],
                 z: globalCoords[2]
@@ -80,7 +116,94 @@ class EntityEditor {
         }
     }
 
+    swapJobs(jobIds) {
+        console.log('Swapping Crystal jobs');
+        // Here we go through all the files, for every one where we find CrystalData we
+        // push in a new job ID.
+        // With this swap, a job may remain where it already was.
+        for(let key in this.entityFiles) {
+            const entityFile = this.entityFiles[key];
+            for(let entity of entityFile) {
+                if(entity.CrystalData) {
+                    if (jobIds.length > 0) {
+                        entity.CrystalData.JobID = jobIds.shift();
+                    } else {
+                        entity.CrystalData.JobID = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    shuffleTreasure() {
+        console.log('Swapping treasures');
+        const allTreasure = [];
+        // First we grab all the treasures in the entities
+        for(let key in this.entityFiles) {
+            const entityFile = this.entityFiles[key];
+            for(let entity of entityFile) {
+                // IDK What lootType 0 is and im not messing with it
+                // 1 and 2 seem to be equipment vs item
+                if(entity.TreasureData && entity.TreasureData.LootType != 0) {
+                    allTreasure.push({
+                        LootType: entity.TreasureData.LootType,
+                        LootValue: entity.TreasureData.LootValue
+                    })
+                }
+            }
+        }
+
+        const shuffledTreasure = shuffle(allTreasure); 
+
+        // Now we go through and swap em
+        for(let key in this.entityFiles) {
+            const entityFile = this.entityFiles[key];
+            for(let entity of entityFile) {
+                if(entity.TreasureData && entity.TreasureData.LootType != 0) {
+                    const newTreasure = shuffledTreasure.shift();
+                    entity.TreasureData.LootType = newTreasure.LootType;
+                    entity.TreasureData.LootValue = newTreasure.LootValue;
+                }
+            }
+        }
+    }
+
+    shuffleMonsters() {
+        // SparkData
+        // SparkData.IsUnique
+        // SparkData.IsGiant
+        // SparkData.SetGlobalFlagOnVictory
+        // SparkData.TroopPages[].TroopID and .Rate
+        console.log('Swapping Monsters (Naive)');
+        const allTroops = [];
+        // First we grab all the treasures in the entities
+        // For now we will be super naive, swapping everything, even unique ones
+        // even bosses, even giants, even ones that set flags, and the entire
+        // troop page
+        for(let key in this.entityFiles) {
+            const entityFile = this.entityFiles[key];
+            for(let entity of entityFile) {
+                if(entity.SparkData) {
+                    allTroops.push(entity.SparkData.TroopPages)
+                }
+            }
+        }
+
+        const shuffledTroops = shuffle(allTroops); 
+
+        for(let key in this.entityFiles) {
+            const entityFile = this.entityFiles[key];
+            for(let entity of entityFile) {
+                if(entity.SparkData) {
+                    const newTroops = shuffledTroops.shift();
+                    entity.SparkData.TroopPages = newTroops;
+                }
+            }
+        }
+    }
+
     loadEntities() {
+        console.log('Loading entities');
         const worldFile = fs.readFileSync(path.join(this.contentPath, "Worlds", this.file + ".dat"));
 
         // The world file is actually just a Zip File, but with a small header of 2 bytes in front
@@ -119,20 +242,20 @@ class EntityEditor {
         const entityLedgerBuffer = Buffer.from(entityArr.slice(4 + headerLength + 4, 4 + headerLength + 4 + ledgerLength))
         this.entityLedger = entityLedgerBuffer.toString().split(';\r\n').filter((x) => !!x).map(this.parseEntityLedger);
 
+        // Next we read the Zip data regions
         const numZipFiles = entityDat.readInt32LE(4 + 4 + headerLength + ledgerLength);
         const zipMetaRegionOffset = 4 + headerLength + 4 + ledgerLength + 4;        
         const zipRegionOffset = 4 + headerLength + 4 + ledgerLength + 4 + (numZipFiles * 16) + 4;
         const zipRegionSize = entityDat.readInt32LE(zipRegionOffset);
         const zipRegion = entityArr.slice(zipRegionOffset + 4, zipRegionOffset + 4 + zipRegionSize)
 
-        // We store these for writing out later
+        // We store some segments of the DAT files that we will never change
+        // to reconstruct it later.
         this.beforeBytes = entityDat.slice(0, 4 + headerLength + 4 + ledgerLength);
         this.mysteriousBytes = entityDat.slice(zipRegionOffset - 4, zipRegionOffset);
         this.endingBytes = entityDat.slice(zipRegionOffset + 4 + zipRegionSize);
 
-        // Now we go through all zip file metadata and get an index of them
-        // and store the zip file in memory
-        // TODO: Probably should do a better job of ensuring these are in order
+        // Now we go through all zip file metadata and keep an index of them in memory
         this.zipDataCache = {};
         for(let i = 0; i < numZipFiles; i++) {
             const zipData = {}
@@ -147,20 +270,22 @@ class EntityEditor {
         // Finally, we want to grab all the entity JSON data to be able to edit them
         // To do this we just use the entity ledger to search the zip files we know have entities
         // and skip ones weve already loaded
-
+        // If an entitiy is indicated as being in a zip file, then there will be a file called
+        // y<num>e.json in the zip file (where num is the global y coord of the entity) that
+        // contains a JSON list of all the entities at the y coordinate.
         this.entityFiles = {};
         for(let entity of this.entityLedger) {
-            const fileCoords = entity.fileCoords;
-            const zipKey = fileCoords.x + ',' + fileCoords.z;
-            const entry = 'y' + fileCoords.y + 'e.json';
+            const globalCoords = entity.globalCoords;
+            const zipKey = globalCoords.x + ',' + globalCoords.z;
+            const entry = 'y' + globalCoords.y + 'e.json';
 
-            if (!!this.entityFiles[zipKey + ',' + fileCoords.y]) {
+            if (!!this.entityFiles[zipKey + ',' + globalCoords.y]) {
                 continue;
             }
 
             const zip = this.zipDataCache[zipKey].data;
             const entityJson = JSON.parse(zip.getEntry(entry).getData().toString());
-            this.entityFiles[zipKey + ',' + fileCoords.y] = entityJson;
+            this.entityFiles[zipKey + ',' + globalCoords.y] = entityJson;
         }
     }
 
@@ -169,7 +294,7 @@ class EntityEditor {
         // Everything up until the entity ledger should be the same
         // Potentially the ledger as well if we havent changed the location of anything
 
-        // For every entity in entityFiles, turn the new JSON into a buffer
+        // For every file in entityFiles, turn the new JSON into a buffer
         // find the zip in the zipDataCache and overwrite the JSON file entry
         for(let key in this.entityFiles) {
             const parts = key.split(',');
@@ -190,7 +315,6 @@ class EntityEditor {
         for(let key in this.zipDataCache) {
             const zipData = this.zipDataCache[key];
             const zipDataBuffer = zipData.data.toBuffer();
-
 
             // add the zip buffer
             zipBuffers.push(zipDataBuffer);
@@ -233,60 +357,96 @@ class EntityEditor {
 class ExecutableEditor {
     constructor(gamePath) {
         this.gamePath = gamePath;
-        this.exeData = fs.readFileSync(path.join(gamePath, 'Crystal Project.exe'))
+        this.exeData = null;
+        // These strings are static variables/hardcoded strings in the code
+        // That are used to determine the save directory (and deletede save directory)
+        // In order to not fuck with peoples non-randomized stuff, I hack it to
+        // change the save directory to its own one
         this.saveDirBuf = Buffer.from("Save/", 'utf16le');
         this.newSaveDirBuf = Buffer.from("Rand/", 'utf16le');
         this.deleteDirBuf = Buffer.from("Deleted/", 'utf16le');
         this.newDeleteDirBuf = Buffer.from("Deyeted/", 'utf16le');
+
+        // This byte signature is for a static variable in the code that determins
+        // what six jobs you start the game with unlocked. Each int64 is the id
+        // of a job.
+        this.startJobBuffer = Buffer.alloc(4 * 6);
+        this.startJobBuffer.writeUInt32LE(0);
+        this.startJobBuffer.writeUInt32LE(2, 4);
+        this.startJobBuffer.writeUInt32LE(5, 8);
+        this.startJobBuffer.writeUInt32LE(4, 12);
+        this.startJobBuffer.writeUInt32LE(3, 16);
+        this.startJobBuffer.writeUInt32LE(14, 20);
+
+        // This byte signature is for a static variable in the code that determiens
+        // what 4 jobs the 4 characters you create on a new game start as. Im guessing
+        // this should be kept in line with the unlocked jobs above to avoid crashes.
+        this.pickedJobBuffer = Buffer.alloc(4 * 4);
+        this.pickedJobBuffer.writeUInt32LE(0);
+        this.pickedJobBuffer.writeUInt32LE(5, 4);
+        this.pickedJobBuffer.writeUInt32LE(4, 8);
+        this.pickedJobBuffer.writeUInt32LE(3, 12);
+
+    }
+
+    loadExe() {
+        this.exeData = fs.readFileSync(path.join(this.gamePath, 'Crystal Project.exe'));
+    }
+
+    replaceBuffer(oldBuffer, newBuffer) {
+        let replaceCount = 0;
+        let lastLastIdx = 0;
+        let lastIdx = this.exeData.indexOf(oldBuffer, 0);
+        let bufferParts = [];
+        while(lastIdx !== -1) {
+            bufferParts.push(this.exeData.slice(lastLastIdx, lastIdx));
+            bufferParts.push(newBuffer);
+            lastLastIdx = lastIdx + newBuffer.length;
+            lastIdx = this.exeData.indexOf(oldBuffer, lastIdx+1)
+            replaceCount++;
+        }
+        bufferParts.push(this.exeData.slice(lastLastIdx));
+        this.exeData = Buffer.concat(bufferParts);
+
+        return replaceCount;
     }
 
     changeSaveDirectory() {
-        let lastLastIdx = 0;
-        let lastIdx = this.exeData.indexOf(this.saveDirBuf, 0);
-        let bufferParts = [];
-        while(lastIdx !== -1) {
-            bufferParts.push(this.exeData.slice(lastLastIdx, lastIdx));
-            bufferParts.push(this.newSaveDirBuf);
-            lastLastIdx = lastIdx + this.newSaveDirBuf.length;
-            lastIdx = this.exeData.indexOf(this.saveDirBuf, lastIdx+1)
-        }
-        bufferParts.push(this.exeData.slice(lastLastIdx));
-        this.exeData = Buffer.concat(bufferParts);
+        const count = this.replaceBuffer(this.saveDirBuf, this.newSaveDirBuf);
+        console.log(`replaced ${count} patterns for save directory`);
     }
 
     changeDeleteDirectory() {
-        let lastLastIdx = 0;
-        let lastIdx = this.exeData.indexOf(this.deleteDirBuf, 0);
-        let bufferParts = [];
-        while(lastIdx !== -1) {
-            bufferParts.push(this.exeData.slice(lastLastIdx, lastIdx));
-            bufferParts.push(this.newDeleteDirBuf);
-            lastLastIdx = lastIdx + this.newDeleteDirBuf.length;
-            lastIdx = this.exeData.indexOf(this.deleteDirBuf, lastIdx+1)
+        const count = this.replaceBuffer(this.deleteDirBuf, this.newDeleteDirBuf);
+        console.log(`replaced ${count} patterns for delete directory`);
+    }
+
+    changeStartingJobs(jobIds) {
+        const newStartJobBuffer = Buffer.alloc(4 * 6);
+        for(let i = 0; i < 6; i++) {
+            const jobId = jobIds[i % jobIds.length];
+            newStartJobBuffer.writeUInt32LE(jobId, i * 4);
         }
-        bufferParts.push(this.exeData.slice(lastLastIdx));
-        this.exeData = Buffer.concat(bufferParts);
+
+        const count = this.replaceBuffer(this.startJobBuffer, newStartJobBuffer);
+        console.log(`replaced ${count} patterns for starting jobs`);
+    }
+
+    changePickedJobs(jobIds) {
+        const newPickedJobBuffer = Buffer.alloc(4 * 4);
+        for(let i = 0; i < 4; i++) {
+            const jobId = jobIds[i % jobIds.length];
+            newPickedJobBuffer.writeUInt32LE(jobId, i * 4);
+        }
+
+        const count = this.replaceBuffer(this.pickedJobBuffer, newPickedJobBuffer);
+        console.log(`replaced ${count} patterns for picked jobs`);
     }
 
     saveExe() {
         fs.writeFileSync(path.join(this.gamePath, 'Crystal Project.exe'), this.exeData);
     }
 }
-
-// TODO Write EXE Editor, load EXE, search for strings, and fix
-
-// 00 00 00 00 02 00 00 00 05 00 00 00 04 00 00 00 03 00 00 00 0E 00 00 00
-// This is the default job setup
-
-// 00 00 00 00 05 00 00 00 04 00 00 00 03 00 00 00
-// This is the starting selected jobs
-
-// Can check for SAVE_DIR string "Save/" and "Deleted/" to change, or prefixes
-// Also maybe can search for Saved Games/
-// Saved Games = 53 00 61 76 00 65 00 64 00 20 00 47 00 61 00 6D 00 65 00 73 00 2F 00
-// Save/ = 53 00 61 00 76 00 65 00 2F 00
-// Deleted/ = 44 00 65 00 6C 00 65 00 74 00 65 00 64 00 2F 00  
-
 
 const localGameDir = 'crystal-project';
 const contentPath = path.join(localGameDir, 'Content');
@@ -300,10 +460,18 @@ const dbReader = new DatabaseReader(contentPath);
 const entityEditor = new EntityEditor(contentPath);
 const exeEditor = new ExecutableEditor(localGameDir);
 
-dbReader.readFiles(contentPath);
-entityEditor.loadEntities(contentPath);
-entityEditor.saveEntities(contentPath);
+dbReader.readFiles();
+const randomizedJobs = shuffle(dbReader.getJobIds());
+
+entityEditor.loadEntities();
+entityEditor.swapJobs(randomizedJobs.slice(6));
+entityEditor.shuffleTreasure();
+entityEditor.shuffleMonsters();
+entityEditor.saveEntities();
+
+exeEditor.loadExe();
 exeEditor.changeSaveDirectory();
 exeEditor.changeDeleteDirectory();
+exeEditor.changeStartingJobs(randomizedJobs.slice(0, 6));
+exeEditor.changePickedJobs(randomizedJobs.slice(0, 4));
 exeEditor.saveExe();
-
