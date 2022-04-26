@@ -797,7 +797,7 @@ const entityEditor = new EntityEditor(contentPath);
 const exeEditor = new ExecutableEditor(localGameDir);
 
 dbReader.readFiles();
-const randomizedJobs = shuffle(dbReader.getJobIds()).slice(0, 4);
+const randomizedJobs = shuffle(dbReader.getJobIds());
 
 entityEditor.loadEntities();
 entityEditor.swapJobs(randomizedJobs.slice(6));
@@ -805,7 +805,7 @@ entityEditor.shuffleTreasure();
 entityEditor.shuffleMonsters();
 entityEditor.moveCrystals();
 // Add a cheat nan with the 3 mount items
-entityEditor.addEntity(makeCheatNan([39, 49, 50]))
+entityEditor.addEntity(makeCheatNan([39, 49, 50, 114]))
 entityEditor.saveEntities();
 
 exeEditor.loadExe();
