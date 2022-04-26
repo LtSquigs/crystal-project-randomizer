@@ -22,6 +22,196 @@ function shuffle(array) {
     return array;
 }
 
+const makeCheatNan = (itemIds) => {
+    const preItemActions = [ 
+        {
+            "ActionType": 0,
+            "Data": null
+        },
+        {
+            "ActionType": 1,
+            "Data": {
+            "Message": "It's a secret to everybody...",
+            "NpcKey": null,
+            "Choices": [],
+            "AnswerVariableKey": null,
+            "ShowPartyStatus": false
+            }
+        }
+    ]
+    const postItemActions = [
+        {
+            "ActionType": 6,
+            "Data": {
+            "Scope": 0,
+            "EntityKey": null,
+            "VariableKey": "Obtained",
+            "VariableType": 0,
+            "Flag": true,
+            "Number": 0,
+            "SourceVariableScope": 0,
+            "SourceVariableKey": null,
+            "LootType": 0,
+            "LootValue": 0
+            }
+        },
+        {
+            "ActionType": 10,
+            "Data": {
+            "RefreshCurrentOutfit": false,
+            "RefreshCurrentPage": false,
+            "RefreshCurrentPosition": false,
+            "CancelAllActiveActions": false,
+            "TriggerPlayerAction": true,
+            "TriggerPlayerProximity": false,
+            "TriggerAuto": false,
+            "TriggerPlayerTouch": false,
+            "TriggerTriggerNpc": false,
+            "GlobalRefreshOutfits": false,
+            "GlobalRefreshPages": false,
+            "GlobalRefreshPositions": false,
+            "GlobalTrySpawn": false,
+            "GlobalTryDespawn": false,
+            "NpcKey": null
+            }
+        }
+    ]
+
+    const itemActions = [
+    ]
+    for(let itemId in itemIds) {
+        itemActions.push(
+            {
+                "ActionType": 8,
+                "Data": {
+                    "LootType": 1,
+                    "LootValue": itemId,
+                    "Count": 1
+                }
+            }
+        )
+    }
+
+    return {
+        "ID": 99989,
+        "Coord": {
+            "X": 0,
+            "Y": 99,
+            "Z": 3
+        },
+        "EntityType": 0,
+        "Comments": null,
+        "NpcData": {
+            "Key": "Z1_CheatNan",
+            "LinkedKey": null,
+            "TieToSpawn": false,
+            "UniquePerKey": false,
+            "Outfits": [
+                {
+                    "Condition": {
+                        "ConditionType": 0,
+                        "Data": null,
+                        "IsNegation": false
+                    },
+                    "TextureKey": "Actor/Npc_Nan",
+                    "Name": "Nan",
+                    "PlayerCharacterLevel": null,
+                    "Facing": 5,
+                    "ShadowType": 2,
+                    "AutoStep": false,
+                    "VoxelID": null,
+                    "VoxelVariantIndex": 0,
+                    "PlayerCollision": 3,
+                    "NpcCollision": 0,
+                    "MountType": 15,
+                    "JumpType": 0,
+                    "KeepSpawned": false,
+                    "WanderType": 0,
+                    "WanderSpeed": 0,
+                    "WanderFrequency": 0,
+                    "WanderRadius": 0,
+                    "WanderRoute": [],
+                    "WanderRouteIsLine": false
+                }
+            ],
+            "Pages": [
+                {
+                "Condition": {
+                    "ConditionType": 0,
+                    "Data": null,
+                    "IsNegation": false
+                },
+                "TriggerType": 0,
+                "TriggerProximityRadius": 0,
+                "TriggerProximityBox": {
+                    "XNeg": 0,
+                    "YNeg": 0,
+                    "ZNeg": 0,
+                    "XPos": 0,
+                    "YPos": 0,
+                    "ZPos": 0
+                },
+                "TriggerOnExitProximity": false,
+                "TriggerTouchType": 0,
+                "Actions": [
+                    {
+                        "ActionType": 3,
+                        "Data": {
+                            "Condition": {
+                                "ConditionType": 3,
+                                "Data": {
+                                    "Scope": 0,
+                                    "EntityKey": null,
+                                    "VariableKey": "Obtained",
+                                    "Eval": 0,
+                                    "VariableType": 0,
+                                    "Flag": false,
+                                    "Number": 0,
+                                    "SourceVariableScope": 0,
+                                    "SourceVariableKey": null,
+                                    "LootType": 0,
+                                    "LootValue": 0
+                                },
+                                "IsNegation": false
+                            },
+                            "ConditionActionsTrue": [
+                                {
+                                    "ActionType": 0,
+                                    "Data": null
+                                },
+                                {
+                                    "ActionType": 1,
+                                    "Data": {
+                                        "Message": "It's a secret to everybody...",
+                                        "NpcKey": null,
+                                        "Choices": [],
+                                        "AnswerVariableKey": null,
+                                        "ShowPartyStatus": false
+                                    }
+                                },
+                                {
+                                    "ActionType": 2,
+                                    "Data": null
+                                }
+                            ],
+                            "ConditionActionsFalse": preItemActions.concat(itemActions).concat(postItemActions)
+                        }
+                    }
+                ],
+                "Context": 0
+                }
+            ]
+        },
+        "SignData": null,
+        "SparkData": null,
+        "DoorData": null,
+        "HomePointData": null,
+        "TreasureData": null,
+        "CrystalData": null,
+        "MarkerData": null
+    }
+}
+
 class DatabaseReader {
     constructor(contentPath) {
         this.contentPath = contentPath;
@@ -244,6 +434,44 @@ class EntityEditor {
         }
 
         this.moveEntity(crytalsToMove[0].from, { X: -4, Y: 120, Z: -22 }, crytalsToMove[0].entity);
+    }
+
+    addEntity(entity) {
+        const voxelX = voxelCoordFromGlobal(entity.Coord.X);
+        const voxelY = voxelCoordFromGlobal(entity.Coord.Y);
+        const voxelZ = voxelCoordFromGlobal(entity.Coord.Z);
+        const newEntityFile = `${voxelX},${voxelZ},${voxelY}`;
+
+        if (!this.entityFiles[newEntityFile]) {
+            const zipKey = `${voxelX},${voxelZ}`;
+            // If there is not an existing entity file, we need to make the array for it
+            // as well as create the entry in the corresponding zip file
+            this.entityFiles[newEntityFile] = [];
+            const zipMeta = this.zipDataCache[zipKey];
+            
+            if (!zipMeta) {
+                // There is no existing zip file, we have to make one, which is annoying
+                // I dont think this use case can ever actually happen though because
+                // where would we be placing an entity with no existing voxels?
+                // For now just log a warning and ignore it
+                console.error("No existing voxel zip to place entity in");
+                return;
+            }
+
+            const zip = zipMeta.data;
+            // Just as an extra precaution we make sure the entry is not there
+            // already
+            if (!zip.getEntry(`y${voxelY}e.json`)) {
+                zip.addFile(`y${voxelY}e.json`, Buffer.from(JSON.stringify([])));
+            }
+        }
+
+        const newEntityJson = this.entityFiles[newEntityFile];
+
+        // Finally we remove out entity from the old entity JSON file
+        // and add it to the new entity JSON file
+        newEntityJson.push(entity)
+        this.entityFiles[newEntityFile] = newEntityJson;
     }
 
     // to here should by simple x,y,z global coords
@@ -576,6 +804,8 @@ entityEditor.swapJobs(randomizedJobs.slice(6));
 entityEditor.shuffleTreasure();
 entityEditor.shuffleMonsters();
 entityEditor.moveCrystals();
+// Add a cheat nan with the 3 mount items
+entityEditor.addEntity(makeCheatNan(39, 49, 50))
 entityEditor.saveEntities();
 
 exeEditor.loadExe();
