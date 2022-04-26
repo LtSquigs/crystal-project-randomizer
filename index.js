@@ -256,16 +256,16 @@ class DatabaseReader {
             let newItem = itemMap[key] // Obj with LootType LootValue keys
             let oldItem = key.split(','); // LootType,LootValue string
             let oldPrice = 0;
-            if (oldItem[0] === 1) {
-                for(let thing in this.databases.item) {
-                    if(thing.ID === oldItem[1]) {
+            if (parseInt(oldItem[0]) === 1) {
+                for(let thing of this.databases.item.json) {
+                    if(thing && thing.ID === parseInt(oldItem[1])) {
                         oldPrice = thing.Cost;
                         break;
                     }
                 }
-            } else if (oldItem[0] === 2) {
-                for(let thing in this.databases.equipment) {
-                    if(thing.ID === oldItem[1]) {
+            } else if (parseInt(oldItem[0]) === 2) {
+                for(let thing of this.databases.equipment.json) {
+                    if(thing && thing.ID === parseInt(oldItem[1])) {
                         oldPrice = thing.Cost;
                         break;
                     }
@@ -273,14 +273,14 @@ class DatabaseReader {
             }
 
             if (newItem.LootType === 1) {
-                for(let thing in this.databases.item) {
-                    if(thing.ID === newItem.LootValue) {
+                for(let thing of this.databases.item.json) {
+                    if(thing && thing.ID === newItem.LootValue) {
                         thing.Cost = oldPrice;
                     }
                 }
             } else if (newItem.LootType === 2) {
-                for(let thing in this.databases.equipment) {
-                    if(thing.ID === newItem.LootValue) {
+                for(let thing of this.databases.equipment.json) {
+                    if(thing && thing.ID === newItem.LootValue) {
                         thing.Cost = oldPrice;
                     }
                 }
@@ -474,6 +474,7 @@ class EntityEditor {
         // the treasure data back to shops. 
         // This is because shops cant sell money treasure, so to ensure we have enough
         // to fill the shops we do them seperately
+        const seenShopItems = {};
         if(options.includeShops) {
             for(let key in this.entityFiles) {
                 const entityFile = this.entityFiles[key];
@@ -499,11 +500,14 @@ class EntityEditor {
                                         if (newItem === -1) {
                                             // Havent mapped this one yet, lets grab a random item!
                                             newItem = allTreasure.shift();
-                                            while(!(newItem.LootType === 1 || newItem.LootType === 2)) {
+                                            while(!(newItem.LootType === 1 || newItem.LootType === 2) || seenShopItems[item.LootType + ',' + item.LootValue]) {
                                                 allTreasure.push(newItem);
                                                 newItem = allTreasure.shift();
                                             }
 
+                                            // This prevents one item being mapped to two things, just simplifies life
+                                            // e.g. if the item is in a shop and in treasure chests
+                                            seenShopItems[item.LootType + ',' + item.LootValue] = true;
                                             shopTreasureMap[item.LootType + ',' + item.LootValue] = newItem;
                                         }
                                         
