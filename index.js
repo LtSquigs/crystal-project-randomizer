@@ -95,9 +95,9 @@ const makeCheatNan = (itemIds) => {
     return {
         "ID": 99989,
         "Coord": {
-            "X": 1,
+            "X": 3,
             "Y": 99,
-            "Z": 1
+            "Z": -1
         },
         "EntityType": 0,
         "Comments": null,
@@ -797,7 +797,7 @@ const entityEditor = new EntityEditor(contentPath);
 const exeEditor = new ExecutableEditor(localGameDir);
 
 dbReader.readFiles();
-const randomizedJobs = shuffle(dbReader.getJobIds()).slice(4);
+const randomizedJobs = shuffle(dbReader.getJobIds()).slice(0, 4);
 
 entityEditor.loadEntities();
 entityEditor.swapJobs(randomizedJobs.slice(6));
