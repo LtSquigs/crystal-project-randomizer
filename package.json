@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "adm-zip": "^0.5.9"
+    "adm-zip": "^0.5.9",
+    "deep-search-json": "^3.0.0"
   }
 }

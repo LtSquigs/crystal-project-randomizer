@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const AdmZip = require("adm-zip");
+const deepSearch = require('./deep-search-json');
+const { exit } = require('process');
 
 const GAME_PATH = "";
 
@@ -22,7 +24,24 @@ function shuffle(array) {
     return array;
 }
 
-const makeCheatNan = (itemIds) => {
+const makeCheatNan = (options, mapIds) => {
+    let itemIds = [];
+    if (options.quintarPass) itemIds.push(7);
+    if (options.homePointStone) itemIds.push(19);
+    if (options.quintarFlute) itemIds.push(39);
+    if (options.salmonViolin) itemIds.push(48);
+    if (options.owlDrum) itemIds.push(49);
+    if (options.ibekBell) itemIds.push(50);
+    if (options.salmonCello) itemIds.push(114);
+    if (options.goldenQuintar) {
+        itemIds.push(115);
+        itemIds.push(167);
+        itemIds.push(201);
+    }
+    if (options.maps) {
+        itemIds = itemIds.concat(mapIds);
+    }
+
     const preItemActions = [ 
         {
             "ActionType": 0,
@@ -56,26 +75,6 @@ const makeCheatNan = (itemIds) => {
             }
         },
         {
-          "ActionType": 63,
-          "Data": {
-            "ActionType": 0,
-            "QuintarType": 7,
-            "QuintarNature": 3,
-            "Slot": 0,
-            "RaceTrack": 0
-          }
-        },
-        {
-          "ActionType": 63,
-          "Data": {
-            "ActionType": 1,
-            "QuintarType": 0,
-            "QuintarNature": 0,
-            "Slot": 0,
-            "RaceTrack": 0
-          }
-        },
-        {
             "ActionType": 2,
             "Data": null
         },
@@ -92,6 +91,31 @@ const makeCheatNan = (itemIds) => {
                     "LootValue": itemId,
                     "Count": 1
                 }
+            }
+        )
+    }
+
+    if (options.goldenQuintar) {
+        itemActions.push(
+            {
+              "ActionType": 63,
+              "Data": {
+                "ActionType": 0,
+                "QuintarType": 7,
+                "QuintarNature": 3,
+                "Slot": 0,
+                "RaceTrack": 0
+              }
+            },
+            {
+              "ActionType": 63,
+              "Data": {
+                "ActionType": 1,
+                "QuintarType": 0,
+                "QuintarNature": 0,
+                "Slot": 0,
+                "RaceTrack": 0
+              }
             }
         )
     }
@@ -342,73 +366,160 @@ class EntityEditor {
     }
 
     swapJobs(jobIds) {
-        console.log('Swapping Crystal jobs');
-        // Here we go through all the files, for every one where we find CrystalData we
-        // push in a new job ID.
-        // With this swap, a job may remain where it already was.
+        const firstJob = jobIds.length > 0 ? jobIds[0] : 0;
         for(let key in this.entityFiles) {
             const entityFile = this.entityFiles[key];
             for(let entity of entityFile) {
                 if(entity.CrystalData) {
                     if (jobIds.length > 0) {
                         entity.CrystalData.JobID = jobIds.shift();
-                    } else {
-                        entity.CrystalData.JobID = 0;
+                    } else { // Useful for the limited jobs option
+                        entity.CrystalData.JobID = firstJob;
                     }
                 }
             }
         }
     }
 
-    shuffleTreasure() {
-        console.log('Swapping treasures');
+   async shuffleItems(options) {
         const allTreasure = [];
-        // First we grab all the treasures in the entities
+
+        // Iterative through all entities and grab items
+        const shopTreasureMap = {};
         for(let key in this.entityFiles) {
             const entityFile = this.entityFiles[key];
             for(let entity of entityFile) {
-                // IDK What lootType 0 is and im not messing with it
-                // 1 and 2 seem to be equipment vs item
-                if(entity.TreasureData && entity.TreasureData.LootType != 0) {
+                // If this is a treasure chest, than we just add it to the pool
+                // Roughly ~535 items
+                if(options.includeTreasures && entity.TreasureData && entity.TreasureData.LootType != 0) {
                     allTreasure.push({
                         LootType: entity.TreasureData.LootType,
                         LootValue: entity.TreasureData.LootValue
                     })
+                }
+
+                // If this is an npc we check for shop data or npc data
+                if(entity.NpcData) {
+                    if(options.includeShops) {
+                        var shopAction = null;
+                        await deepSearch(entity.NpcData, "ActionType", (obj) => {
+                            if (obj.ActionType == 5) {
+                                shopAction = obj;
+                            }
+                        });
+
+                        // For shop data, because shops are meant to be "linked" in a sense
+                        // we only add each item from the shop to the pool once and make a map
+                        // to later map them to a random item.
+                        // e.g. if the gold armor shop in one zone changes, it should sell
+                        // the same thing in another zone.
+                        // Roughly ~300 items
+                        if (shopAction !== null) {
+                            if (shopAction.Data) { // Ignore weird use cases
+                                for(let item of shopAction.Data.Stock) {
+                                    if(item.LootType != 0 && shopTreasureMap[item.LootType + ',' + item.LootValue] !== -1) {
+                                        shopTreasureMap[item.LootType + ',' + item.LootValue] = -1 // Dummy value for now
+                                        allTreasure.push({
+                                            LootType: item.LootType,
+                                            LootValue: item.LootValue
+                                        })
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
         const shuffledTreasure = shuffle(allTreasure); 
 
+        // Now that we have shuffled the treasure, the first thing we must do is map
+        // the treasure data back to shops. 
+        // This is because shops cant sell money treasure, so to ensure we have enough
+        // to fill the shops we do them seperately
+        if(options.includeShops) {
+            for(let key in this.entityFiles) {
+                const entityFile = this.entityFiles[key];
+                for(let entity of entityFile) {
+                    if(entity.NpcData) {
+                        var shopAction = null;
+                        await deepSearch(entity.NpcData, "ActionType", (obj) => {
+                            if (obj.ActionType == 5) {
+                                shopAction = obj;
+                            }
+                        });
+
+                        // For shop data, we pick a random item/equip (loot type 1 or 2) from the pool
+                        if (shopAction !== null) {
+                            if (shopAction.Data) { // Ignore weird use cases
+                                for(let item of shopAction.Data.Stock) {
+                                    if(item.LootType != 0) {
+                                        let newItem = shopTreasureMap[item.LootType + ',' + item.LootValue];
+                                        if (newItem === -1) {
+                                            // Havent mapped this one yet, lets grab a random item!
+                                            newItem = allTreasure.shift();
+                                            while(!(newItem.LootType === 1 || newItem.LootType === 2)) {
+                                                allTreasure.push(newItem);
+                                                newItem = allTreasure.shift();
+                                            }
+
+                                            shopTreasureMap[item.LootType + ',' + item.LootValue] = newItem;
+                                        }
+                                        
+                                        item.LootType = newItem.LootType;
+                                        item.LootValue = newItem.LootValue;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Now we go through and swap em
         for(let key in this.entityFiles) {
             const entityFile = this.entityFiles[key];
             for(let entity of entityFile) {
-                if(entity.TreasureData && entity.TreasureData.LootType != 0) {
+                if(options.includeTreasures && entity.TreasureData && entity.TreasureData.LootType != 0) {
                     const newTreasure = shuffledTreasure.shift();
                     entity.TreasureData.LootType = newTreasure.LootType;
                     entity.TreasureData.LootValue = newTreasure.LootValue;
                 }
             }
         }
+
+        console.log(shuffledTreasure.length);
     }
 
-    shuffleMonsters() {
-        // SparkData
-        // SparkData.IsUnique
-        // SparkData.IsGiant
-        // SparkData.SetGlobalFlagOnVictory
-        // SparkData.TroopPages[].TroopID and .Rate
-        console.log('Swapping Monsters (Naive)');
+    shuffleMonsters(options) {
         const allTroops = [];
-        // First we grab all the treasures in the entities
-        // For now we will be super naive, swapping everything, even unique ones
-        // even bosses, even giants, even ones that set flags, and the entire
-        // troop page
+        const hasKeyQuintar = (sparkData) => {
+            let hasQuintar = false;
+            sparkData.TroopPages.forEach(troop => {
+                // Troop: 59, 90 are the IDs of the brutish quintar 
+                // in the quintar sanctuary and the Fancy Quintar
+                // boss used for quintar pass and quintar flute
+                if (troop.TroopID == 59 || troop.TroopID == 90) {
+                    hasQuintar = true;
+                }
+            });
+
+            return hasQuintar;
+        }
+
+        // We grab a list of all the troop pages available
         for(let key in this.entityFiles) {
             const entityFile = this.entityFiles[key];
             for(let entity of entityFile) {
                 if(entity.SparkData) {
+                    if (!options.includeUniques && entity.SparkData.IsUnique) {
+                        continue;
+                    }
+                    if (!options.includeKeyQuintars && hasKeyQuintar(entity.SparkData)) {
+                        continue;
+                    }
                     allTroops.push(entity.SparkData.TroopPages)
                 }
             }
@@ -416,10 +527,17 @@ class EntityEditor {
 
         const shuffledTroops = shuffle(allTroops); 
 
+        // Swap em
         for(let key in this.entityFiles) {
             const entityFile = this.entityFiles[key];
             for(let entity of entityFile) {
                 if(entity.SparkData) {
+                    if (!options.includeUniques && entity.SparkData.IsUnique) {
+                        continue;
+                    }
+                    if (!options.includeKeyQuintars && hasKeyQuintar(entity.SparkData)) {
+                        continue;
+                    }
                     const newTroops = shuffledTroops.shift();
                     entity.SparkData.TroopPages = newTroops;
                 }
@@ -427,14 +545,13 @@ class EntityEditor {
         }
     }
 
-    moveCrystals() {
-        console.log('Moving Crystals');
+    moveCrystals(options) {
         const crytalsToMove = [];
 
-        const customPoints = [
+        let customPoints = [
             [-10, 122, -39], // In the overpas between spawning meadow and desert
             [-190, 157, -310], // On top of the CUBE
-            [932, 91, -50], // In the middle of the ferries path
+            [930, 91, -50], // In the middle of the ferries path
             [926, 10, -87], // In the depths
             [-88, 109, -368], // Salmon Bay Left Cliff Jutt
             [756, 207, -376], // Inside Eastern Chasm
@@ -451,6 +568,7 @@ class EntityEditor {
             [632, 246, -261], // On Top of the tree on top of the mountain near ninja (where autumn leaf is)
             [415, 205, -532], // On top of the  icelibrary (not very top, but in front of a window)
         ]
+
         // First we grab all the treasures in the entities
         // For now we will be super naive, swapping everything, even unique ones
         // even bosses, even giants, even ones that set flags, and the entire
@@ -460,13 +578,19 @@ class EntityEditor {
             for(let entity of entityFile) {
                 if(entity.CrystalData) {
                     crytalsToMove.push({ from: key, entity: entity });
+                    if (options.includeOriginalLocations) {
+                        customPoints.push([entity.Coord.X, entity.Coord.Y, entity.Coord.Z]);
+                    }
                 }
             }
         }
 
-        for(let i = 0; i < customPoints.length; i++) {
-            const p = customPoints[i];
-            this.moveEntity(crytalsToMove[i].from, { X: p[0], Y: p[1], Z: p[2] }, crytalsToMove[i].entity);
+        customPoints = shuffle(customPoints);
+
+        // Replace this
+        for(let crystal of crytalsToMove) {
+            const p = customPoints.shift();
+            this.moveEntity(crystal.from, { X: p[0], Y: p[1], Z: p[2] }, crystal.entity);
         }
     }
 
@@ -511,6 +635,10 @@ class EntityEditor {
     // to here should by simple x,y,z global coords
     // from here should be the entity file key (e.g. x,y,z of file)
     moveEntity(from, to, entity) {
+        // First make sure we arent moving it to itself
+        if (to.X == entity.Coord.X && to.Y == entity.Coord.Y && to.Z == entity.Coord.Z) {
+            return;
+        }
         // In order to move an entity, we need to change its internal X/Y/Z coords
         // and also which entityFile the entitiy is in.
         // If those are changed, the rest will automatically be handled by the save system.
@@ -827,64 +955,117 @@ if (fs.existsSync(localGameDir)) {
 }
 fs.cpSync(GAME_PATH, localGameDir, {recursive: true});
 
-const dbReader = new DatabaseReader(contentPath);
-const entityEditor = new EntityEditor(contentPath);
-const exeEditor = new ExecutableEditor(localGameDir);
+const options = {
+    jobOptions: {
+        enable: true,
+        startingJobs: 6,
+        crystalJobs: 18,
+        customJobPool: null,
+    },
+    itemOptions: {
+        includeTreasures: true,
+        includeShops: true,
+    },
+    monsterOptions: {
+        enable: true,
+        includeUniques: true,
+        includeKeyQuintars: false,
+    },
+    crystalOptions: {
+        enable: true,
+        includeOriginalLocations: true,
+    },
+    cheatNanOptions: {
+        enable: true,
+        quintarPass: true,
+        homePointStone: true,
+        quintarFlute: true,
+        salmonViolin: false,
+        owlDrum: false,
+        ibekBell: false,
+        salmonCello: false,
+        goldenQuintar: false,
+        maps: false
+    }
+};
 
-dbReader.readFiles();
-entityEditor.loadEntities();
-exeEditor.loadExe();
+(async () => {
+    const dbReader = new DatabaseReader(contentPath);
+    const entityEditor = new EntityEditor(contentPath);
+    const exeEditor = new ExecutableEditor(localGameDir);
 
-// Swappa da jobs
-const randomizedJobs = shuffle(dbReader.getJobIds());
-entityEditor.swapJobs(randomizedJobs.slice(6));
-exeEditor.changeStartingJobs(randomizedJobs.slice(0, 6));
-exeEditor.changePickedJobs(randomizedJobs.slice(0, 4));
+    dbReader.readFiles();
+    entityEditor.loadEntities();
+    exeEditor.loadExe();
 
-// Add in ability to shuffle the key items from some quests
-// (This may have to be hardcoded)
-entityEditor.shuffleTreasure();
+    if (options.jobOptions.enable) {
+        console.log('Swapping Jobs');
+        let randomizedJobs = null;
+        if (options.jobOptions.customJobPool) {
+            randomizedJobs = shuffle(customJobPool);
+        } else {
+            randomizedJobs = shuffle(dbReader.getJobIds());
+        }
+        if (options.jobOptions.numberOfJobs > 0) {
+            randomizedJobs = randomizedJobs.slice(0, options.jobOptions.numberOfJobs);
+        }
+        entityEditor.swapJobs(randomizedJobs.slice(options.jobOptions.startingJobs, options.jobOptions.startingJobs + options.jobOptions.crystalJobs));
+        exeEditor.changeStartingJobs(randomizedJobs.slice(0, options.jobOptions.startingJobs));
+        exeEditor.changePickedJobs(randomizedJobs.slice(0, 4));
+    }
 
-// Add granularity for shuffling Bosses vs Non Bosses
-// Add option to not shuffle fancy quintar (for quintar pass)
-entityEditor.shuffleMonsters();
+    if(options.itemOptions.includeTreasures || options.itemOptions.includeShops) {
+        console.log('Swapping items');
+        await entityEditor.shuffleItems(options.itemOptions);
+    }
 
-// Add option to delete the crystals
-entityEditor.moveCrystals();
+    if (options.monsterOptions.enable) {
+        console.log('Swapping Monsters');
+        entityEditor.shuffleMonsters(options.monsterOptions);
+    }
 
-// Add a cheat nan with the 3 mount items
-// Todo: Add In Maps + try Golden Quintar (see how annoying it is)
-// Move into entity editor
-// The IDs for the items that summon mounts + the babel quintar
-const mountFlutes = [19, 39, 48, 49, 50, 114, 115, 167, 201];
-// Make Maps optional because of the time it takes
-//const mapIds = [];
-const mapIds = dbReader.getMapIds();
-// Iterate through the DB of items for any Item that is a map
-entityEditor.addEntity(makeCheatNan(mountFlutes.concat(mapIds)))
+    if (options.crystalOptions.enable) {
+        console.log('Moving Crystals');
+        entityEditor.moveCrystals(options.crystalOptions);
+    }
 
-// Change save directory to protect non-rando saves
-exeEditor.changeSaveDirectory();
-exeEditor.changeDeleteDirectory();
+    if (options.cheatNanOptions.enable) {
+        console.log('Creating Cheat Nan')
+        const mapIds = dbReader.getMapIds();
+        entityEditor.addEntity(makeCheatNan(options.cheatNanOptions, mapIds))
+    }
 
-entityEditor.saveEntities();
-exeEditor.saveExe();
+    // Change save directory to protect non-rando saves
+    exeEditor.changeSaveDirectory();
+    exeEditor.changeDeleteDirectory();
 
+    entityEditor.saveEntities();
+    dbReader.writeFiles();
+    exeEditor.saveExe();
+})()
 
 // Initial Randomizer Options:
 // - Randomize the Jobs from crytals including starting jobs (Done)
-// - Randomize crystal locations within set of some locations (need to test locations)
-//    - Medium, need to add locations and test them
+// - Randomize crystal locations within set of some locations (Done)
 // - Randomize all treasure chests (Done)
 //   - Consider how hard it is to randomize Shop inventories (Medium)
+//      - Basic Shops - Not So hard
+//          "ActionType": 5 Data.Stock, 57 Results
+//      Recipes - No
+//      Lost and Found - Lol no no
 //   - Consider randomizing NPC quest rewards into pool (Hard? unless we dont care about logic)
+//      - There are 354 results.. not all of these should be randomized right?
+//          This includes: Black Squirrels, Ores, The three Tablets, Ibek Bell, Raft Pass, Quintar Pass
+//                         Milk Bag, Keys, Fisher Rewards, Master Crests, The Octopus Hat, Butterfly Goo wtf?
+//                         Crabs, Ground Sparkles, King Crab Item, 
+//          Prob the most important thing here would be the Quintar Pass and the Raft Pass as they are technically
+//          One item, and the ability to filter out the mining. Otherwise... free for all is prob fine?
+//          Finding Actions also not simple
 // - Randomize Monsters in Flames (Done)
-//   - Give option to enable putting Bosses in pool (Easy)
-//   - Give option to remove Fancy Quintar from pool (For Quintar pass) (Easy)
 // - Give option to add Cheat Nan (Done)
-//   - Nan wll give you all mounts + maps to make game open up (Medium)
-//   - Nan spawns at the start of the zone
-// - Potentially consider alt ending hack (alt ending = getting all jobs) (Hard)
+//
+// - Custom PRNG that can set seed for shareability
+//
 // - Put this all in an Electron App
 // - Have it modify the local copy of the EXE, while making a backup of both files
 // - Have option to restore original files
