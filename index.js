@@ -252,6 +252,43 @@ class DatabaseReader {
         this.databases = {};
     }
 
+    fixItemPrices(itemMap) {
+        for(let key in itemMap) {
+            let newItem = itemMap[key] // Obj with LootType LootValue keys
+            let oldItem = key.split(','); // LootType,LootValue string
+            let oldPrice = 0;
+            if (oldItem[0] === 1) {
+                for(let thing in this.databases.item) {
+                    if(thing.ID === oldItem[1]) {
+                        oldPrice = thing.Cost;
+                        break;
+                    }
+                }
+            } else if (oldItem[0] === 2) {
+                for(let thing in this.databases.equipment) {
+                    if(thing.ID === oldItem[1]) {
+                        oldPrice = thing.Cost;
+                        break;
+                    }
+                }
+            }
+
+            if (newItem.LootType === 1) {
+                for(let thing in this.databases.item) {
+                    if(thing.ID === newItem.LootValue) {
+                        thing.Cost = oldPrice;
+                    }
+                }
+            } else if (newItem.LootType === 2) {
+                for(let thing in this.databases.equipment) {
+                    if(thing.ID === newItem.LootValue) {
+                        thing.Cost = oldPrice;
+                    }
+                }
+            }
+        }
+    }
+
     readFiles() {
         console.log('Reading database files');
         for(const file of this.files) {
@@ -444,13 +481,9 @@ class EntityEditor {
                 for(let entity of entityFile) {
                     if(entity.NpcData) {
                         var shopAction = null;
-                        await deepSearch(entity.NpcData, "ActionType", (obj, path) => {
-                            let searchObj = entity.NpcData;
-                            for(let key of path) {
-                                searchObj = searchObj[key];
-                            }
-                            if (searchObj.ActionType == 5) {
-                                shopAction = searchObj;
+                        await deepSearch(entity.NpcData, "ActionType", (obj) => {
+                            if (obj.ActionType == 5) {
+                                shopAction = obj;
                             }
                         });
 
@@ -495,6 +528,7 @@ class EntityEditor {
         }
 
         console.log(shuffledTreasure.length);
+        return [shopTreasureMap];
     }
 
     shuffleMonsters(options) {
@@ -1020,7 +1054,8 @@ const options = {
 
     if(options.itemOptions.includeTreasures || options.itemOptions.includeShops) {
         console.log('Swapping items');
-        await entityEditor.shuffleItems(options.itemOptions);
+        const [shuffledShopItems] = await entityEditor.shuffleItems(options.itemOptions);
+        dbReader.fixItemPrices(shuffledShopItems);
     }
 
     if (options.monsterOptions.enable) {
