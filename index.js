@@ -430,6 +430,27 @@ class EntityEditor {
     moveCrystals() {
         console.log('Moving Crystals');
         const crytalsToMove = [];
+
+        const customPoints = [
+            [-10, 122, -39], // In the overpas between spawning meadow and desert
+            [-190, 157, -310], // On top of the CUBE
+            [932, 91, -50], // In the middle of the ferries path
+            [926, 10, -87], // In the depths
+            [-88, 109, -368], // Salmon Bay Left Cliff Jutt
+            [756, 207, -376], // Inside Eastern Chasm
+            [293, 140, -102], // Delende, near the Giant Boss
+            [380, 95, -33], // Seaside Cliffs right side, near the random Crab
+            [172, 128, 37], // Mercury Shrine, to the left overpass to volcano already
+            [332, 199, -331], // Boomer Society Balcony
+            [97, 126, -204], // Center of lake delende
+            [257, 62, 115], // Underwater crab cavern
+            [270, 30, -586], // Underwater Quiz Cave (where item finder is)
+            [170, 141, -255], // Salmon Pass in the little cave that connects the underpass to hte main river
+            [400, 144, -237], // Under the bridge to the main town
+            [700, 213, -320], // On Top of the Quintar Maosoleum
+            [632, 246, -261], // On Top of the tree on top of the mountain near ninja (where autumn leaf is)
+            [415, 205, -532], // On top of the  icelibrary (not very top, but in front of a window)
+        ]
         // First we grab all the treasures in the entities
         // For now we will be super naive, swapping everything, even unique ones
         // even bosses, even giants, even ones that set flags, and the entire
@@ -437,13 +458,16 @@ class EntityEditor {
         for(let key in this.entityFiles) {
             const entityFile = this.entityFiles[key];
             for(let entity of entityFile) {
-                if(entity.CrystalData && entity.ID == 130) {
+                if(entity.CrystalData) {
                     crytalsToMove.push({ from: key, entity: entity });
                 }
             }
         }
 
-        this.moveEntity(crytalsToMove[0].from, { X: -4, Y: 120, Z: -22 }, crytalsToMove[0].entity);
+        for(let i = 0; i < customPoints.length; i++) {
+            const p = customPoints[i];
+            this.moveEntity(crytalsToMove[i].from, { X: p[0], Y: p[1], Z: p[2] }, crytalsToMove[i].entity);
+        }
     }
 
     addEntity(entity) {
@@ -833,8 +857,9 @@ entityEditor.moveCrystals();
 // Move into entity editor
 // The IDs for the items that summon mounts + the babel quintar
 const mountFlutes = [19, 39, 48, 49, 50, 114, 115, 167, 201];
-const mapIds = [];
-//const mapIds = dbReader.getMapIds();
+// Make Maps optional because of the time it takes
+//const mapIds = [];
+const mapIds = dbReader.getMapIds();
 // Iterate through the DB of items for any Item that is a map
 entityEditor.addEntity(makeCheatNan(mountFlutes.concat(mapIds)))
 
