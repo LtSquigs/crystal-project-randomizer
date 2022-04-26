@@ -95,9 +95,9 @@ const makeCheatNan = (itemIds) => {
     return {
         "ID": 99989,
         "Coord": {
-            "X": 0,
+            "X": 4,
             "Y": 99,
-            "Z": 3
+            "Z": 7
         },
         "EntityType": 0,
         "Comments": null,
