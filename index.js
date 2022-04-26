@@ -444,9 +444,13 @@ class EntityEditor {
                 for(let entity of entityFile) {
                     if(entity.NpcData) {
                         var shopAction = null;
-                        await deepSearch(entity.NpcData, "ActionType", (obj) => {
-                            if (obj.ActionType == 5) {
-                                shopAction = obj;
+                        await deepSearch(entity.NpcData, "ActionType", (obj, path) => {
+                            let searchObj = entity.NpcData;
+                            for(let key of path) {
+                                searchObj = searchObj[key];
+                            }
+                            if (searchObj.ActionType == 5) {
+                                shopAction = searchObj;
                             }
                         });
 
