@@ -55,27 +55,6 @@ const makeCheatNan = (itemIds) => {
             "LootValue": 0
             }
         },
-        // This is the experimental logic to get the golden quintar?
-        {
-          "ActionType": 63,
-          "Data": {
-            "ActionType": 0,
-            "QuintarType": 7,
-            "QuintarNature": 3,
-            "Slot": 0,
-            "RaceTrack": 0
-          }
-        },
-        {
-          "ActionType": 63,
-          "Data": {
-            "ActionType": 1,
-            "QuintarType": 0,
-            "QuintarNature": 0,
-            "Slot": 0,
-            "RaceTrack": 0
-          }
-        },
         {
             "ActionType": 2,
             "Data": null
@@ -193,6 +172,35 @@ const makeCheatNan = (itemIds) => {
                                         "AnswerVariableKey": null,
                                         "ShowPartyStatus": false
                                     }
+                                },
+                                {
+                                    "ActionType": 8,
+                                    "Data": {
+                                        "LootType": 1,
+                                        "LootValue": 167,
+                                        "Count": 1
+                                    }
+                                }
+                                // This is the experimental logic to get the golden quintar?
+                                {
+                                  "ActionType": 63,
+                                  "Data": {
+                                    "ActionType": 0,
+                                    "QuintarType": 7,
+                                    "QuintarNature": 3,
+                                    "Slot": 0,
+                                    "RaceTrack": 0
+                                  }
+                                },
+                                {
+                                  "ActionType": 63,
+                                  "Data": {
+                                    "ActionType": 1,
+                                    "QuintarType": 0,
+                                    "QuintarNature": 0,
+                                    "Slot": 0,
+                                    "RaceTrack": 0
+                                  }
                                 },
                                 {
                                     "ActionType": 2,
@@ -832,9 +840,10 @@ entityEditor.moveCrystals();
 // Add a cheat nan with the 3 mount items
 // Todo: Add In Maps + try Golden Quintar (see how annoying it is)
 // Move into entity editor
-// The IDs for the items that summon mounts
-const mountFlutes = [39, 48, 49, 50, 114, 115];
-const mapIds = dbReader.getMapIds();
+// The IDs for the items that summon mounts + the babel quintar
+const mountFlutes = [39, 48, 49, 50, 114, 115, 167];
+const mapIds = [];
+//const mapIds = dbReader.getMapIds();
 // Iterate through the DB of items for any Item that is a map
 entityEditor.addEntity(makeCheatNan(mountFlutes.concat(mapIds)))
 
