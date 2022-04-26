@@ -55,26 +55,31 @@ const makeCheatNan = (itemIds) => {
             "LootValue": 0
             }
         },
+        // This is the experimental logic to get the golden quintar?
         {
-            "ActionType": 10,
-            "Data": {
-            "RefreshCurrentOutfit": false,
-            "RefreshCurrentPage": false,
-            "RefreshCurrentPosition": false,
-            "CancelAllActiveActions": false,
-            "TriggerPlayerAction": true,
-            "TriggerPlayerProximity": false,
-            "TriggerAuto": false,
-            "TriggerPlayerTouch": false,
-            "TriggerTriggerNpc": false,
-            "GlobalRefreshOutfits": false,
-            "GlobalRefreshPages": false,
-            "GlobalRefreshPositions": false,
-            "GlobalTrySpawn": false,
-            "GlobalTryDespawn": false,
-            "NpcKey": null
-            }
-        }
+          "ActionType": 63,
+          "Data": {
+            "ActionType": 0,
+            "QuintarType": 7,
+            "QuintarNature": 3,
+            "Slot": 0,
+            "RaceTrack": 0
+          }
+        },
+        {
+          "ActionType": 63,
+          "Data": {
+            "ActionType": 1,
+            "QuintarType": 0,
+            "QuintarNature": 0,
+            "Slot": 0,
+            "RaceTrack": 0
+          }
+        },
+        {
+            "ActionType": 2,
+            "Data": null
+        },
     ]
 
     const itemActions = [
@@ -269,6 +274,12 @@ class DatabaseReader {
         const jobs = this.databases.job.json;
         return jobs.map((job) => job.ID)
     }
+
+    getMapIds() {
+        const items = this.databases.item.json;
+        return items.filter((item) => item && item.MapForBiomeID !== null).map((item) => item.ID)
+    }
+
 }
 
 const voxelCoordFromGlobal = (coord) => {
@@ -787,6 +798,7 @@ class ExecutableEditor {
 const localGameDir = 'crystal-project';
 const contentPath = path.join(localGameDir, 'Content');
 
+// TODO: Change this logic to edit in place
 if (fs.existsSync(localGameDir)) {
     fs.rmSync(localGameDir, {recursive: true});
 }
@@ -797,20 +809,58 @@ const entityEditor = new EntityEditor(contentPath);
 const exeEditor = new ExecutableEditor(localGameDir);
 
 dbReader.readFiles();
-const randomizedJobs = shuffle(dbReader.getJobIds());
-
 entityEditor.loadEntities();
-entityEditor.swapJobs(randomizedJobs.slice(6));
-entityEditor.shuffleTreasure();
-entityEditor.shuffleMonsters();
-entityEditor.moveCrystals();
-// Add a cheat nan with the 3 mount items
-entityEditor.addEntity(makeCheatNan([39, 49, 50, 114]))
-entityEditor.saveEntities();
-
 exeEditor.loadExe();
-exeEditor.changeSaveDirectory();
-exeEditor.changeDeleteDirectory();
+
+// Swappa da jobs
+const randomizedJobs = shuffle(dbReader.getJobIds());
+entityEditor.swapJobs(randomizedJobs.slice(6));
 exeEditor.changeStartingJobs(randomizedJobs.slice(0, 6));
 exeEditor.changePickedJobs(randomizedJobs.slice(0, 4));
+
+// Add in ability to shuffle the key items from some quests
+// (This may have to be hardcoded)
+entityEditor.shuffleTreasure();
+
+// Add granularity for shuffling Bosses vs Non Bosses
+// Add option to not shuffle fancy quintar (for quintar pass)
+entityEditor.shuffleMonsters();
+
+// Add option to delete the crystals
+entityEditor.moveCrystals();
+
+// Add a cheat nan with the 3 mount items
+// Todo: Add In Maps + try Golden Quintar (see how annoying it is)
+// Move into entity editor
+// The IDs for the items that summon mounts
+const mountFlutes = [39, 48, 49, 50, 114, 115];
+const mapIds = dbReader.getMapIds();
+// Iterate through the DB of items for any Item that is a map
+entityEditor.addEntity(makeCheatNan(mountFlutes.concat(mapIds)))
+
+// Change save directory to protect non-rando saves
+exeEditor.changeSaveDirectory();
+exeEditor.changeDeleteDirectory();
+
+entityEditor.saveEntities();
 exeEditor.saveExe();
+
+
+// Initial Randomizer Options:
+// - Randomize the Jobs from crytals including starting jobs (Done)
+// - Randomize crystal locations within set of some locations (need to test locations)
+//    - Medium, need to add locations and test them
+// - Randomize all treasure chests (Done)
+//   - Consider how hard it is to randomize Shop inventories (Medium)
+//   - Consider randomizing NPC quest rewards into pool (Hard? unless we dont care about logic)
+// - Randomize Monsters in Flames (Done)
+//   - Give option to enable putting Bosses in pool (Easy)
+//   - Give option to remove Fancy Quintar from pool (For Quintar pass) (Easy)
+// - Give option to add Cheat Nan (Done)
+//   - Nan wll give you all mounts + maps to make game open up (Medium)
+//   - Nan spawns at the start of the zone
+// - Potentially consider alt ending hack (alt ending = getting all jobs) (Hard)
+// - Put this all in an Electron App
+// - Have it modify the local copy of the EXE, while making a backup of both files
+// - Have option to restore original files
+// - Figure out if its possible to set seed or use different PRNG
