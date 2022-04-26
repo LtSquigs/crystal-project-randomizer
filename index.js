@@ -79,7 +79,7 @@ const makeCheatNan = (itemIds) => {
 
     const itemActions = [
     ]
-    for(let itemId in itemIds) {
+    for(let itemId of itemIds) {
         itemActions.push(
             {
                 "ActionType": 8,
@@ -805,7 +805,7 @@ entityEditor.shuffleTreasure();
 entityEditor.shuffleMonsters();
 entityEditor.moveCrystals();
 // Add a cheat nan with the 3 mount items
-entityEditor.addEntity(makeCheatNan(39, 49, 50))
+entityEditor.addEntity(makeCheatNan([39, 49, 50]))
 entityEditor.saveEntities();
 
 exeEditor.loadExe();
