@@ -1123,7 +1123,7 @@ const options = {
         includeMinorNpcItems: false,    // 146 items, Everything else from an npc interaction not in the above (squirrels, crabs, shineys, etc.)
     },
     monsterOptions: {
-        enable: true,                   // Swaps all flames to be other flames from anywhere in the game
+        swapMonsters: true,                   // Swaps all flames to be other flames from anywhere in the game
         includeUniques: true,           // Bosses and other unique Sparks
         includeKeyQuintars: false,      // The Brutish Quintar (in the sewers adjacent area) and Fancy Quintar can be disabled to make Quintar Pass/Flute guaranteed.
         shuffleMonsterDrops: true,      // Shuffles the monster drops between monster drops, not from the greater item pool
@@ -1178,17 +1178,17 @@ const options = {
         dbReader.fixItemPrices(shuffledShopItems);
     }
 
-    if (options.monsterOptions.enable) {
+    if (options.monsterOptions.swapMonsters) {
         console.log('Swapping Monsters');
         entityEditor.shuffleMonsters(options.monsterOptions);
+    }
 
-        if(options.shuffleMonsterDrops) {
-            dbReader.shuffleMonsterDrops();
-        }
+    if(options.shuffleMonsterDrops) {
+        dbReader.shuffleMonsterDrops();
+    }
 
-        if(options.shuffleMonsterSteals) {
-            dbReader.shuffleMonsterSteals();
-        }
+    if(options.shuffleMonsterSteals) {
+        dbReader.shuffleMonsterSteals();
     }
 
     if (options.crystalOptions.enable) {
