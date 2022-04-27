@@ -68,4 +68,7 @@ These items are not removed from the shuffle pool for items.
 
 I will not list all the options here, but an important note: The items are given one at a time, so the more you select, the longer it takes to get the items.
 
+### Settings
 
+- **Seed**: The seed used to randomize the game. If you set the same seed as someone else, should produce same randomization.
+- **Configuration String**: Used to quickly load or save a configuration
