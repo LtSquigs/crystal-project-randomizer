@@ -1,4 +1,5 @@
 // taken and modified from https://github.com/davidmehani/deep-search-JSON/blob/master/deep-search-JSON.js
+// main modification is to keep iterating past the first key found, and the addition of adding the path to the callback
 // deep object key search to find a key anywhere in an object and run a function on its parent (with support for async functions)
 async function recursiveFind(obj, key, func, totalKeys) {
     if (!totalKeys) totalKeys = []

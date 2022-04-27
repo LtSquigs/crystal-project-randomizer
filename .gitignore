@@ -1,7 +1,10 @@
-lol.js
 *.dat
 database
-crystal-project
 node_modules
 .DS_Store
-o
+Content
+Content-backup
+Crystal Project.exe
+Crystal Project.exe.bak
+settings.json
+dist

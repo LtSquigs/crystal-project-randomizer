@@ -1,6 +1,62 @@
 {
+  "name": "crystal-project-randomizer",
+  "version": "1.0.0",
+  "description": "An app to randomize the game The Crystal Project in various ways",
+  "main": "main.js",
+  "build": {
+    "productName": "Crystal Project Randomizer",
+    "appId": "crystal.project.randomizer",
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/Crystal Project.exe",
+      "!**/Crystal Project.exe.bak",
+      "!Content",
+      "!Content-backup",
+      "!settings.json",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],    
+    "win": {
+      "target": "portable"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.utilities",
+      "identity": null,
+      "icon": "icon.png",
+      "extendInfo": {
+        "LSUIElement": 1
+      }
+    }
+  },
+  "postinstall": "electron-builder install-app-deps",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder -w",
+    "dist-mac": "electron-builder -m"
+  },
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "adm-zip": "^0.5.9",
-    "deep-search-json": "^3.0.0"
+    "asar": "^3.1.0",
+    "bootstrap": "^5.1.3",
+    "htm": "^3.1.1",
+    "random-seed": "^0.3.0"
+  },
+  "devDependencies": {
+    "electron": "^18.1.0",
+    "electron-builder": "^23.0.3",
+    "electron-rebuild": "^3.2.7"
   }
 }
