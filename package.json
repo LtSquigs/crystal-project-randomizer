@@ -26,7 +26,8 @@
       "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
     ],    
     "win": {
-      "target": "portable"
+      "target": "portable",
+      "icon": "baseline_swap_horizontal_circle_black_48dp.png"
     },
     "mac": {
       "target": "dmg",
