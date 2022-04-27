@@ -416,9 +416,14 @@ class EntityEditor {
             }
         }
     }
-
    async shuffleItems(options) {
         const allTreasure = [];
+
+        // This is a blacklist of items to not include in the npc shuffle if enabled
+        const npcShuffleEnabled = options.includeMajorNpcItems || options.includeMasterySeals || options.includeMinorNpcItems || options.includeOres;
+        const majorNpcItems = ['1,7','1,19','1,39','1,48','1,49','1,50','1,60','1,114','1,115','1,37','1,93','1,147','1,148'];
+        const masterSeals = ['2,564','2,565','2,566','2,567','2,568','2,569','2,570','2,571','2,572','2,573','2,574','2,575','2,576','2,577','2,578','2,579','2,580','2,581','2,582','2,583','2,584','2,585','2,586','2,587'];
+        const ores = ['1,3','1,4','1,5','1,67','1,68','1,69','1,70','1,71','1,72'];
 
         // Iterative through all entities and grab items
         const shopTreasureMap = {};
@@ -437,38 +442,66 @@ class EntityEditor {
                 // If this is an npc we check for shop data or npc data
                 if(entity.NpcData) {
                     if(options.includeShops) {
-                        var shopAction = null;
-                        await deepSearch(entity.NpcData, "ActionType", (obj) => {
-                            if (obj.ActionType == 5) {
-                                shopAction = obj;
-                            }
-                        });
-
                         // For shop data, because shops are meant to be "linked" in a sense
                         // we only add each item from the shop to the pool once and make a map
                         // to later map them to a random item.
                         // e.g. if the gold armor shop in one zone changes, it should sell
                         // the same thing in another zone.
                         // Roughly ~300 items
-                        if (shopAction !== null) {
-                            if (shopAction.Data) { // Ignore weird use cases
-                                for(let item of shopAction.Data.Stock) {
-                                    if(item.LootType != 0 && shopTreasureMap[item.LootType + ',' + item.LootValue] !== -1) {
-                                        shopTreasureMap[item.LootType + ',' + item.LootValue] = -1 // Dummy value for now
+                        await deepSearch(entity.NpcData, "ActionType", (obj) => {
+                            if (obj.ActionType == 5) {
+                                if (obj.Data) { // Ignore weird use cases
+                                    for(let item of obj.Data.Stock) {
+                                        if(item.LootType != 0 && shopTreasureMap[item.LootType + ',' + item.LootValue] !== -1) {
+                                            shopTreasureMap[item.LootType + ',' + item.LootValue] = -1 // Dummy value for now
+                                            allTreasure.push({
+                                                LootType: item.LootType,
+                                                LootValue: item.LootValue
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    if(npcShuffleEnabled) {
+                        await deepSearch(entity.NpcData, "ActionType", (obj) => {
+                            if (obj.ActionType == 8) {
+                                if (obj.Data) { // Ignore weird use cases
+                                    const itemKey = `${obj.Data.LootType},${obj.Data.LootValue}`;
+                                    if (!options.includeMajorNpcItems && majorNpcItems.includes(itemKey)) {
+                                        return;
+                                    }
+                                    if (!options.includeMasterySeals && masterSeals.includes(itemKey)) {
+                                        return;
+                                    }
+                                    if (!options.includeOres && ores.includes(itemKey)) {
+                                        return;
+                                    }
+                                    if (!options.includeMinorNpcItems && !ores.includes(itemKey) && !masterSeals.includes(itemKey) && !majorNpcItems.includes(itemKey)) {
+                                        return;
+                                    }
+                                    if (obj.Data.LootType !== 0) {
                                         allTreasure.push({
-                                            LootType: item.LootType,
-                                            LootValue: item.LootValue
+                                            LootType: obj.Data.LootType,
+                                            LootValue: obj.Data.LootValue,
                                         })
                                     }
                                 }
                             }
-                        }
+                        });
                     }
                 }
             }
         }
 
+        if (allTreasure.length === 0) {
+            return [[]];
+        }
+
         const shuffledTreasure = shuffle(allTreasure); 
+        console.log(shuffledTreasure.length);
 
         // Now that we have shuffled the treasure, the first thing we must do is map
         // the treasure data back to shops. 
@@ -480,43 +513,38 @@ class EntityEditor {
                 const entityFile = this.entityFiles[key];
                 for(let entity of entityFile) {
                     if(entity.NpcData) {
-                        var shopAction = null;
                         await deepSearch(entity.NpcData, "ActionType", (obj, path) => {
                             let searchObj = entity.NpcData;
                             for(let key of path) {
                                 searchObj = searchObj[key];
                             }
                             if (searchObj.ActionType == 5) {
-                                shopAction = searchObj;
-                            }
-                        });
-
-                        // For shop data, we pick a random item/equip (loot type 1 or 2) from the pool
-                        if (shopAction !== null) {
-                            if (shopAction.Data) { // Ignore weird use cases
-                                for(let item of shopAction.Data.Stock) {
-                                    if(item.LootType != 0) {
-                                        let newItem = shopTreasureMap[item.LootType + ',' + item.LootValue];
-                                        if (newItem === -1) {
-                                            // Havent mapped this one yet, lets grab a random item!
-                                            newItem = allTreasure.shift();
-                                            while(!(newItem.LootType === 1 || newItem.LootType === 2) || seenShopItems[item.LootType + ',' + item.LootValue]) {
-                                                allTreasure.push(newItem);
+                                // For shop data, we pick a random item/equip (loot type 1 or 2) from the pool
+                                if (searchObj.Data) { // Ignore weird use cases
+                                    for(let item of searchObj.Data.Stock) {
+                                        if(item.LootType !== 0) {
+                                            let newItem = shopTreasureMap[item.LootType + ',' + item.LootValue];
+                                            if (newItem === -1) {
+                                                // Havent mapped this one yet, lets grab a random item!
                                                 newItem = allTreasure.shift();
-                                            }
+                                                while(!(newItem.LootType === 1 || newItem.LootType === 2) || seenShopItems[newItem.LootType + ',' + newItem.LootValue]) {
+                                                    allTreasure.push(newItem);
+                                                    newItem = allTreasure.shift();
+                                                }
 
-                                            // This prevents one item being mapped to two things, just simplifies life
-                                            // e.g. if the item is in a shop and in treasure chests
-                                            seenShopItems[item.LootType + ',' + item.LootValue] = true;
-                                            shopTreasureMap[item.LootType + ',' + item.LootValue] = newItem;
+                                                // This prevents one item being mapped to two things, just simplifies life
+                                                // e.g. if the item is in a shop and in treasure chests
+                                                seenShopItems[newItem.LootType + ',' + newItem.LootValue] = true;
+                                                shopTreasureMap[item.LootType + ',' + item.LootValue] = newItem;
+                                            }
+                                            
+                                            item.LootType = newItem.LootType;
+                                            item.LootValue = newItem.LootValue;
                                         }
-                                        
-                                        item.LootType = newItem.LootType;
-                                        item.LootValue = newItem.LootValue;
                                     }
                                 }
                             }
-                        }
+                        });
                     }
                 }
             }
@@ -526,10 +554,41 @@ class EntityEditor {
         for(let key in this.entityFiles) {
             const entityFile = this.entityFiles[key];
             for(let entity of entityFile) {
-                if(options.includeTreasures && entity.TreasureData && entity.TreasureData.LootType != 0) {
+                if(options.includeTreasures && entity.TreasureData && entity.TreasureData.LootType !== 0) {
                     const newTreasure = shuffledTreasure.shift();
                     entity.TreasureData.LootType = newTreasure.LootType;
                     entity.TreasureData.LootValue = newTreasure.LootValue;
+                }
+
+                if(npcShuffleEnabled) {
+                    await deepSearch(entity.NpcData, "ActionType", (obj, path) => {
+                        let searchObj = entity.NpcData;
+                        for(let key of path) {
+                            searchObj = searchObj[key];
+                        }
+                        if (searchObj.ActionType == 8) {
+                            if (searchObj.Data) { // Ignore weird use cases
+                                const itemKey = `${searchObj.Data.LootType},${searchObj.Data.LootValue}`;
+                                if (!options.includeMajorNpcItems && majorNpcItems.includes(itemKey)) {
+                                    return;
+                                }
+                                if (!options.includeMasterySeals && masterSeals.includes(itemKey)) {
+                                    return;
+                                }
+                                if (!options.includeOres && ores.includes(itemKey)) {
+                                    return;
+                                }
+                                if (!options.includeMinorNpcItems && !ores.includes(itemKey) && !masterSeals.includes(itemKey) && !majorNpcItems.includes(itemKey)) {
+                                    return;
+                                }
+                                if (searchObj.Data.LootType !== 0) {
+                                    const newTreasure = shuffledTreasure.shift();
+                                    searchObj.Data.LootType = newTreasure.LootType;
+                                    searchObj.Data.LootValue = newTreasure.LootValue;
+                                }
+                            }
+                        }
+                    });
                 }
             }
         }
@@ -1008,8 +1067,12 @@ const options = {
         customJobPool: null,
     },
     itemOptions: {
-        includeTreasures: true,
-        includeShops: true,
+        includeTreasures: true, // 535 items
+        includeShops: true, // 283 items
+        includeMajorNpcItems: true, // 18 items
+        includeOres: true, // 165 items
+        includeMasterySeals: true, // 24 items
+        includeMinorNpcItems: true, // 146 items
     },
     monsterOptions: {
         enable: true,
@@ -1059,7 +1122,7 @@ const options = {
         exeEditor.changePickedJobs(randomizedJobs.slice(0, 4));
     }
 
-    if(options.itemOptions.includeTreasures || options.itemOptions.includeShops) {
+    if(options.itemOptions.includeTreasures || options.itemOptions.includeShops || options.itemOptions.includeMajorNpcItems || options.itemOptions.includeOres || options.itemOptions.includeMasterySeals || options.itemOptions.includeMinorNpcItems) {
         console.log('Swapping items');
         const [shuffledShopItems] = await entityEditor.shuffleItems(options.itemOptions);
         dbReader.fixItemPrices(shuffledShopItems);
@@ -1094,11 +1157,8 @@ const options = {
 // - Randomize the Jobs from crytals including starting jobs (Done)
 // - Randomize crystal locations within set of some locations (Done)
 // - Randomize all treasure chests (Done)
-//   - Consider how hard it is to randomize Shop inventories (Medium)
-//      - Basic Shops - Not So hard
-//          "ActionType": 5 Data.Stock, 57 Results
-//      Recipes - No
-//      Lost and Found - Lol no no
+//   - Include Shop inventories (Done)
+//      - This does not include Lost + Found or Craft Shops as too annoying
 //   - Consider randomizing NPC quest rewards into pool (Hard? unless we dont care about logic)
 //      - There are 354 results.. not all of these should be randomized right?
 //          This includes: Black Squirrels, Ores, The three Tablets, Ibek Bell, Raft Pass, Quintar Pass
@@ -1107,6 +1167,32 @@ const options = {
 //          Prob the most important thing here would be the Quintar Pass and the Raft Pass as they are technically
 //          One item, and the ability to filter out the mining. Otherwise... free for all is prob fine?
 //          Finding Actions also not simple
+//
+//          Ores
+//
+//          3, 4, 5 = Ore
+//          67, 68, 69, 70, 71, 72 = Dust and Ingots
+//          
+//          Type 1 (Major Progression Items)
+//
+//          7 = Quintar Pass
+//          19 = Home Point Stone
+//          39 = Quintar Flute
+//          48 = Salmon Violin
+//          49 = Owl Drum
+//          50 = Ibek Bell
+//          60 = Pyramid Key
+//          114 = Salmon Cello
+//          115 = Ocarina
+//          37 = Ferry Pass
+//          93 = Luxury Pass
+//          147 = Skeleton Key
+//          148 = Luxury Pass V2
+//
+//          Mastery Seals
+//          Type 2
+//          564-587 = Mastery Seals
+//
 // - Randomize Monsters in Flames (Done)
 // - Give option to add Cheat Nan (Done)
 //
