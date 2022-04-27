@@ -24,13 +24,13 @@ let settings = {
         shuffleMonsterSteals: true,     // Shuffles the monster seels between monster steels, not from the greater item pool
     },
     crystalOptions: {
-        enable: true,                   // Randomly Moves Crystals between 18 new spots, and the 18 original spots
-        includeOriginalLocations: true, // Wether to include the original, or just the new spots
+        enable: false,                   // Randomly Moves Crystals between 18 new spots, and the 18 original spots
+        includeOriginalLocations: false, // Wether to include the original, or just the new spots
     },
     cheatNanOptions: {                  // Creates a Nan at the very start that can give you various items. THESE ITEMS ARE NOT REMOVED FROM THE RANDOM POOL.
-        quintarPass: true,              // Quintar Renting Pass
-        homePointStone: true,           // Teleport Stone that Astley gives you at the start (easy to miss)
-        quintarFlute: true,             // Personal Quintar
+        quintarPass: false,              // Quintar Renting Pass
+        homePointStone: false,           // Teleport Stone that Astley gives you at the start (easy to miss)
+        quintarFlute: false,             // Personal Quintar
         salmonViolin: false,            // Basic Salmon
         owlDrum: false,                 // Owl Friend
         ibekBell: false,                // GOAT
