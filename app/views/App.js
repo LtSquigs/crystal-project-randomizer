@@ -96,7 +96,7 @@ class App extends Component {
                 <div class="col-3">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="enableJobSwapping" onClick=${this.updateOption('jobOptions.enable')} checked=${settings.jobOptions.enable} />
-                            <label class="form-check-label" for="enableJobSwapping">Enable Job Swapping</label>
+                            <label class="form-check-label" for="enableJobSwapping">Enable Job Shuffling</label>
                         </div>
                         <div class="row">
                             <div class="col-6">
@@ -218,31 +218,31 @@ class App extends Component {
                         <div class="col-4">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="includeTreasures" onInput=${this.updateOption('itemOptions.includeTreasures')} checked=${settings.itemOptions.includeTreasures}/>
-                                <label class="form-check-label" for="includeTreasures">Shuffle Treasure Chests</label>
+                                <label class="form-check-label" for="includeTreasures">Shuffle Treasure Chests (535 items)</label>
                             </div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="includeShops" onInput=${this.updateOption('itemOptions.includeShops')} checked=${settings.itemOptions.includeShops}/>
-                                <label class="form-check-label" for="includeShops">Shuffle Shop Inventories</label>
+                                <label class="form-check-label" for="includeShops">Shuffle Shop Inventories (282 items)</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="includeMajorNpcItems" onInput=${this.updateOption('itemOptions.includeMajorNpcItems')} checked=${settings.itemOptions.includeMajorNpcItems}/>
-                                <label class="form-check-label" for="includeMajorNpcItems">Shuffle Major NPC Items</label>
+                                <label class="form-check-label" for="includeMajorNpcItems">Shuffle Major NPC Items (18 items)</label>
                             </div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="includeOres" onInput=${this.updateOption('itemOptions.includeOres')} checked=${settings.itemOptions.includeOres}/>
-                                <label class="form-check-label" for="includeOres">Shuffle Ores</label>
+                                <label class="form-check-label" for="includeOres">Shuffle Ores (165 items)</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="includeMasterySeals" onInput=${this.updateOption('itemOptions.includeMasterySeals')} checked=${settings.itemOptions.includeMasterySeals}/>
-                                <label class="form-check-label" for="includeMasterySeals">Shuffle Mastery Seals</label>
+                                <label class="form-check-label" for="includeMasterySeals">Shuffle Mastery Seals (24 items)</label>
                             </div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="includeMinorNpcItems" onInput=${this.updateOption('itemOptions.includeMinorNpcItems')} checked=${settings.itemOptions.includeMinorNpcItems}/>
-                                <label class="form-check-label" for="includeMinorNpcItems">Shuffle Minor NPC Items</label>
+                                <label class="form-check-label" for="includeMinorNpcItems">Shuffle Minor NPC Items (146 items)</label>
                             </div>
                         </div>
                     </div>
