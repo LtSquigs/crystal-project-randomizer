@@ -258,7 +258,7 @@ class App extends Component {
                             </div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="swapBosses" onInput=${this.updateOption('monsterOptions.swapBosses')} checked=${settings.monsterOptions.swapBosses}/>
-                                <label class="form-check-label" for="swapBosses">Shuffle Boss Monsters</label>
+                                <label class="form-check-label" for="swapBosses">Shuffle Boss Monsters (Not TRex)</label>
                             </div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="includeKeyQuintars" onInput=${this.updateOption('monsterOptions.includeKeyQuintars')} checked=${settings.monsterOptions.includeKeyQuintars}/>
