@@ -18,7 +18,7 @@ let settings = {
     },
     monsterOptions: {
         swapMonsters: true,             // Swaps all flames to be other flames from anywhere in the game
-        swapBosses: true,           // Bosses and other unique Sparks
+        swapBosses: true,               // Swap bosses
         includeKeyQuintars: false,      // The Brutish Quintar (in the sewers adjacent area) and Fancy Quintar can be disabled to make Quintar Pass/Flute guaranteed.
         shuffleMonsterDrops: true,      // Shuffles the monster drops between monster drops, not from the greater item pool
         shuffleMonsterSteals: true,     // Shuffles the monster seels between monster steels, not from the greater item pool
