@@ -46,8 +46,11 @@ These options shuffle items between various entities. Each option adds items fro
 
 These options are related to shuffling monster related things around. The pools for this shuffle are not shared with the item shuffle.
 
-- **Shuffle Monsters**: Shuffles monster encounters. Whole sparks are shuffled, so if a spark had 2 encounters, those 2 encounters will always be together.
-- **Include Unique Monsters**: Whether or not to include unique monsters like bosses
+- **Shuffle Normal Monsters**: Shuffles normal monster encounters. Whole sparks are shuffled, so if a spark had 2 encounters, those 2 encounters will always be together.
+- **Include Boss Monsters**: Adds all bosses to the shuffle pool
+- **Bosses Can Only Shuffle To Bosses**: If enabled bosses, can only shuffle to other bosses.
+- **Scale Bosses Monster Stats**: If enabled we will attempt to scale the boss to around the same stats as the thing it replaced.
+- **Scale Normal Monster Stats**: If enabled we will attempt to scale the normal monsters to around the same stats as the thing it replaced. NOTE: This is very experimental, as a normal boss may replace more than one monster, in which case which monsters stats it gets will be random!
 - **Include Key Quintar**: Whether to include the Fancy Quintar and Brutish Quintar that are used to get the Quintar Pass and Whistle.
 - **Shuffle Monster Drops**: Shuffles monster drop tables between monsters. Monsters have the same number of drops no matter what.
 - **Shuffle Monster Steals**: Shuffles monster steal tables betweeb monsters. Unsure if this affects Lost and Found.

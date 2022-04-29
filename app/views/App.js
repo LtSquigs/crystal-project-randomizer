@@ -249,7 +249,7 @@ class App extends Component {
                 </div>
                 <div class="col-12 mt-3">
                     <h5 class="display-7">Monster Shuffle Settings</h7>
-                    <p><small>Shuffles Monsters to any other monster on the map. Key Quintars are the Brutish and Fancy Quintars required to get the Quintar Pass</small><br/><small>Exp denotes experimental features that may not always work correctly</small></p>
+                    <p><small>Shuffles Monsters to any other monster on the map. Key Quintars are the Brutish and Fancy Quintars required to get the Quintar Pass</small><br/><small>Exp denotes experimental features that may not always work correctly. Stat Scaling for Normal mobs may be wonky because they swap with many mobs.</small></p>
                     <div class="row">
                         <div class="col-4">
                             <div class="form-check form-switch">
@@ -257,8 +257,8 @@ class App extends Component {
                                 <label class="form-check-label" for="swapMonsters">Shuffle Normal Monsters</label>
                             </div>
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="swapUniques" onInput=${this.updateOption('monsterOptions.swapUniques')} checked=${settings.monsterOptions.swapUniques}/>
-                                <label class="form-check-label" for="swapUniques">Shuffle Unique Monsters</label>
+                                <input class="form-check-input" type="checkbox" id="swapBosses" onInput=${this.updateOption('monsterOptions.swapBosses')} checked=${settings.monsterOptions.swapBosses}/>
+                                <label class="form-check-label" for="swapBosses">Shuffle Boss Monsters</label>
                             </div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="includeKeyQuintars" onInput=${this.updateOption('monsterOptions.includeKeyQuintars')} checked=${settings.monsterOptions.includeKeyQuintars}/>
@@ -268,11 +268,15 @@ class App extends Component {
                         <div class="col-4">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="bossesToBosses" onInput=${this.updateOption('monsterOptions.bossesToBosses')} checked=${settings.monsterOptions.bossesToBosses}/>
-                                <label class="form-check-label" for="bossesToBosses">Unique Can Only Shuffle To Unique</label>
+                                <label class="form-check-label" for="bossesToBosses">Bosses Can Only Shuffle To Bosses</label>
                             </div>
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="statScaleUnique" onInput=${this.updateOption('monsterOptions.statScaleUnique')} checked=${settings.monsterOptions.statScaleUnique}/>
-                                <label class="form-check-label" for="statScaleUnique">Scale Unique Monster Stats (Exp)</label>
+                                <input class="form-check-input" type="checkbox" id="statScaleBosses" onInput=${this.updateOption('monsterOptions.statScaleBosses')} checked=${settings.monsterOptions.statScaleBosses}/>
+                                <label class="form-check-label" for="statScaleBosses">Scale Bosses Monster Stats (Exp)</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="statScaleNormal" onInput=${this.updateOption('monsterOptions.statScaleNormal')} checked=${settings.monsterOptions.statScaleNormal}/>
+                                <label class="form-check-label" for="statScaleNormal">Scale Normal Monster Stats (Exp)</label>
                             </div>
                         </div>
                         <div class="col-4">
