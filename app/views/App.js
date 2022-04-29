@@ -249,32 +249,40 @@ class App extends Component {
                 </div>
                 <div class="col-12 mt-3">
                     <h5 class="display-7">Monster Shuffle Settings</h7>
-                    <p><small>Shuffles Monsters to any other monster on the map. Key Quintars are the Brutish and Fancy Quintars required to get the Quintar Pass</small></p>
+                    <p><small>Shuffles Monsters to any other monster on the map. Key Quintars are the Brutish and Fancy Quintars required to get the Quintar Pass</small><br/><small>Exp denotes experimental features that may not always work correctly</small></p>
                     <div class="row">
                         <div class="col-4">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="swapMonsters" onInput=${this.updateOption('monsterOptions.swapMonsters')} checked=${settings.monsterOptions.swapMonsters}/>
-                                <label class="form-check-label" for="swapMonsters">Shuffle Monsters</label>
+                                <label class="form-check-label" for="swapMonsters">Shuffle Normal Monsters</label>
                             </div>
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="includeUniques" onInput=${this.updateOption('monsterOptions.includeUniques')} checked=${settings.monsterOptions.includeUniques}/>
-                                <label class="form-check-label" for="includeUniques">Include Unique Monsters</label>
+                                <input class="form-check-input" type="checkbox" id="swapUniques" onInput=${this.updateOption('monsterOptions.swapUniques')} checked=${settings.monsterOptions.swapUniques}/>
+                                <label class="form-check-label" for="swapUniques">Shuffle Unique Monsters</label>
                             </div>
-                        </div>
-                        <div class="col-4">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="includeKeyQuintars" onInput=${this.updateOption('monsterOptions.includeKeyQuintars')} checked=${settings.monsterOptions.includeKeyQuintars}/>
                                 <label class="form-check-label" for="includeKeyQuintars">Include Key Quintars</label>
                             </div>
+                        </div>
+                        <div class="col-4">
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="shuffleMonsterDrops" onInput=${this.updateOption('monsterOptions.shuffleMonsterDrops')} checked=${settings.monsterOptions.shuffleMonsterDrops}/>
-                                <label class="form-check-label" for="shuffleMonsterDrops">Shuffle Monster Drops</label>
+                                <input class="form-check-input" type="checkbox" id="bossesToBosses" onInput=${this.updateOption('monsterOptions.bossesToBosses')} checked=${settings.monsterOptions.bossesToBosses}/>
+                                <label class="form-check-label" for="bossesToBosses">Unique Can Only Shuffle To Unique</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="statScaleUnique" onInput=${this.updateOption('monsterOptions.statScaleUnique')} checked=${settings.monsterOptions.statScaleUnique}/>
+                                <label class="form-check-label" for="statScaleUnique">Scale Unique Monster Stats (Exp)</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="shuffleMonsterSteals" onInput=${this.updateOption('monsterOptions.shuffleMonsterSteals')} checked=${settings.monsterOptions.shuffleMonsterSteals}/>
                                 <label class="form-check-label" for="shuffleMonsterSteals">Shuffle Monster Steals</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="shuffleMonsterDrops" onInput=${this.updateOption('monsterOptions.shuffleMonsterDrops')} checked=${settings.monsterOptions.shuffleMonsterDrops}/>
+                                <label class="form-check-label" for="shuffleMonsterDrops">Shuffle Monster Drops</label>
                             </div>
                         </div>
                     </div>
