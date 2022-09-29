@@ -1,3 +1,5 @@
+### NOTE: The Game now has its own built in Randomizer. Suggestion is to use that as I am not going to continue to update this randomizer.
+
 # crystal-project-randomizer
 This application is used to randomized the game The Crystal Project with various options.
 
